@@ -1,8 +1,20 @@
 import { Router } from "express";
-import { getAuthStatus } from "../controllers/auth.controller.js";
+import {
+  getCurrentUser,
+  login,
+  logout,
+  register
+} from "../controllers/auth.controller.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { authRateLimiter } from "../middlewares/rateLimit.js";
+import { validateRequest } from "../middlewares/validateRequest.js";
+import { loginSchema, registerSchema } from "../validators/auth.validator.js";
 
 const router = Router();
 
-router.get("/status", getAuthStatus);
+router.post("/register", authRateLimiter, validateRequest(registerSchema), register);
+router.post("/login", authRateLimiter, validateRequest(loginSchema), login);
+router.post("/logout", logout);
+router.get("/me", authMiddleware, getCurrentUser);
 
 export default router;

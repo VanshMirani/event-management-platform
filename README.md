@@ -7,7 +7,7 @@ JavaScript-only full-stack monorepo for an event management platform.
 - Frontend: React, Vite, JavaScript, Tailwind CSS
 - Backend: Node.js, Express.js, JavaScript
 - Database: PostgreSQL with Prisma
-- Planned auth: JWT with httpOnly cookies
+- Authentication: JWT access and refresh tokens in httpOnly cookies
 - Planned payments: Razorpay
 
 ## Structure
@@ -72,6 +72,41 @@ npm run dev
 Frontend: `http://localhost:5173`
 
 Backend health: `http://localhost:5000/api/health`
+
+## Auth API
+
+Auth uses httpOnly cookies. Frontend requests must include credentials, for example:
+
+```js
+fetch("http://localhost:5000/api/auth/me", {
+  credentials: "include"
+});
+```
+
+Register a user:
+
+```bash
+curl -i -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Event User","email":"user@example.com","password":"StrongPass123"}'
+```
+
+Login:
+
+```bash
+curl -i -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"StrongPass123"}'
+```
+
+Current user and logout:
+
+```bash
+curl -i http://localhost:5000/api/auth/me --cookie "accessToken=<cookie>"
+curl -i -X POST http://localhost:5000/api/auth/logout
+```
+
+Set `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `CLIENT_ORIGIN`, and optional `COOKIE_DOMAIN` in `server/.env`. Do not use the placeholder JWT values outside local scaffolding.
 
 ## Scripts
 
