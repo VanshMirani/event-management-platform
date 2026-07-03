@@ -108,6 +108,23 @@ curl -i -X POST http://localhost:5000/api/auth/logout
 
 Set `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `CLIENT_ORIGIN`, and optional `COOKIE_DOMAIN` in `server/.env`. Do not use the placeholder JWT values outside local scaffolding.
 
+## Frontend Auth
+
+Set `VITE_API_URL` in `client/.env`:
+
+```bash
+VITE_API_URL=http://localhost:5000/api
+```
+
+The React app uses `/api/auth/me` on startup to load the current user from backend httpOnly cookies. JWTs are not stored in `localStorage` or `sessionStorage`.
+
+Auth routes:
+
+- `/login` - sign in and redirect users by role
+- `/register` - create a user account
+- `/user/dashboard` - protected user dashboard
+- `/admin/dashboard` - admin-only dashboard
+
 ## Scripts
 
 - `npm run dev` - run client and server together

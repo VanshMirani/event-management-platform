@@ -1,4 +1,2 @@
-export const authFeature = {
-  name: "auth",
-  plannedStrategy: "JWT with httpOnly cookies"
-};
+export { AuthProvider } from "./AuthProvider.jsx";
+export { useAuth } from "./useAuth.js";
