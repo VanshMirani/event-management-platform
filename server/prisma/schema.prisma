@@ -9,8 +9,13 @@ datasource db {
 
 enum UserRole {
   USER
-  ORGANIZER
   ADMIN
+  ORGANIZER
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
 }
 
 enum EventStatus {
@@ -20,75 +25,262 @@ enum EventStatus {
   COMPLETED
 }
 
+enum EventType {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
 enum BookingStatus {
   PENDING
   CONFIRMED
+  FAILED
   CANCELLED
+  REFUNDED
 }
 
 enum PaymentStatus {
-  PENDING
-  PAID
+  CREATED
+  SUCCESS
   FAILED
   REFUNDED
 }
 
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+  REFUNDED
+}
+
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum CouponStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  passwordHash String
-  role         UserRole  @default(USER)
-  events       Event[]   @relation("OrganizerEvents")
-  bookings     Booking[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String     @id @default(cuid())
+  name            String
+  email           String     @unique
+  passwordHash    String
+  role            UserRole   @default(USER)
+  status          UserStatus @default(ACTIVE)
+  phone           String?
+  avatarUrl       String?
+  organizedEvents Event[]    @relation("OrganizerEvents")
+  bookings        Booking[]
+  tickets         Ticket[]
+  auditLogs       AuditLog[] @relation("AdminAuditLogs")
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([role])
+  @@index([status])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  events      Event[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Event {
-  id          String      @id @default(cuid())
-  title       String
-  description String?
-  venue       String
-  city        String
-  startsAt    DateTime
-  endsAt      DateTime
-  price       Decimal     @db.Decimal(10, 2)
-  capacity    Int
-  status      EventStatus @default(DRAFT)
-  organizerId String
-  organizer   User        @relation("OrganizerEvents", fields: [organizerId], references: [id])
-  bookings    Booking[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id               String       @id @default(cuid())
+  title            String
+  slug             String       @unique
+  description      String?
+  shortDescription String?
+  imageUrl         String?
+  status           EventStatus  @default(DRAFT)
+  type             EventType    @default(OFFLINE)
+  startsAt         DateTime
+  endsAt           DateTime
+  venueName        String?
+  address          String?
+  city             String?
+  state            String?
+  country          String       @default("India")
+  onlineUrl        String?
+  capacity         Int?
+  isFeatured       Boolean      @default(false)
+  categoryId       String
+  organizerId      String
+  category         Category     @relation(fields: [categoryId], references: [id])
+  organizer        User         @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  ticketTypes      TicketType[]
+  bookings         Booking[]
+  tickets          Ticket[]
+  coupons          Coupon[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([categoryId])
+  @@index([organizerId])
+  @@index([status])
+  @@index([startsAt])
+}
+
+model TicketType {
+  id                String        @id @default(cuid())
+  eventId           String
+  name              String
+  description       String?
+  price             Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  totalQuantity     Int
+  availableQuantity Int
+  maxPerBooking     Int           @default(10)
+  salesStartAt      DateTime?
+  salesEndAt        DateTime?
+  isActive          Boolean       @default(true)
+  event             Event         @relation(fields: [eventId], references: [id])
+  bookingItems      BookingItem[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([eventId, name])
+  @@index([eventId])
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  userId      String
-  eventId     String
-  quantity    Int
-  status      BookingStatus @default(PENDING)
-  totalAmount Decimal       @db.Decimal(10, 2)
-  user        User          @relation(fields: [userId], references: [id])
-  event       Event         @relation(fields: [eventId], references: [id])
-  payment     Payment?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  bookingNumber  String        @unique
+  userId         String
+  eventId        String
+  couponId       String?
+  status         BookingStatus @default(PENDING)
+  quantity       Int
+  subtotalAmount Decimal       @db.Decimal(10, 2)
+  discountAmount Decimal       @default(0) @db.Decimal(10, 2)
+  totalAmount    Decimal       @db.Decimal(10, 2)
+  currency       String        @default("INR")
+  expiresAt      DateTime?
+  confirmedAt    DateTime?
+  cancelledAt    DateTime?
+  user           User          @relation(fields: [userId], references: [id])
+  event          Event         @relation(fields: [eventId], references: [id])
+  coupon         Coupon?       @relation(fields: [couponId], references: [id])
+  items          BookingItem[]
+  payment        Payment?
+  tickets        Ticket[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+  @@index([couponId])
+  @@index([status])
+}
+
+model BookingItem {
+  id           String     @id @default(cuid())
+  bookingId    String
+  ticketTypeId String
+  quantity     Int
+  unitPrice    Decimal    @db.Decimal(10, 2)
+  totalAmount  Decimal    @db.Decimal(10, 2)
+  booking      Booking    @relation(fields: [bookingId], references: [id])
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  tickets      Ticket[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([bookingId, ticketTypeId])
+  @@index([bookingId])
+  @@index([ticketTypeId])
 }
 
 model Payment {
   id                String        @id @default(cuid())
   bookingId         String        @unique
   provider          String        @default("razorpay")
-  providerOrderId   String?
-  providerPaymentId String?
-  status            PaymentStatus @default(PENDING)
+  providerOrderId   String?       @unique
+  providerPaymentId String?       @unique
+  providerSignature String?
+  status            PaymentStatus @default(CREATED)
   amount            Decimal       @db.Decimal(10, 2)
   currency          String        @default("INR")
+  failureReason     String?
+  rawPayload        Json?
+  paidAt            DateTime?
+  refundedAt        DateTime?
   booking           Booking       @relation(fields: [bookingId], references: [id])
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+
+  @@index([status])
+}
+
+model Ticket {
+  id            String       @id @default(cuid())
+  ticketNumber  String       @unique
+  qrCodeHash    String       @unique
+  qrCodeUrl     String?
+  status        TicketStatus @default(VALID)
+  userId        String
+  eventId       String
+  bookingId     String
+  bookingItemId String?
+  usedAt        DateTime?
+  cancelledAt   DateTime?
+  user          User         @relation(fields: [userId], references: [id])
+  event         Event        @relation(fields: [eventId], references: [id])
+  booking       Booking      @relation(fields: [bookingId], references: [id])
+  bookingItem   BookingItem? @relation(fields: [bookingItemId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([bookingId])
+  @@index([bookingItemId])
+  @@index([status])
+}
+
+model Coupon {
+  id               String             @id @default(cuid())
+  code             String             @unique
+  description      String?
+  discountType     CouponDiscountType
+  discountValue    Decimal            @db.Decimal(10, 2)
+  status           CouponStatus       @default(ACTIVE)
+  maxUses          Int?
+  usedCount        Int                @default(0)
+  minBookingAmount Decimal            @default(0) @db.Decimal(10, 2)
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  eventId          String?
+  event            Event?             @relation(fields: [eventId], references: [id])
+  bookings         Booking[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([eventId])
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  admin      User     @relation("AdminAuditLogs", fields: [adminId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }

@@ -51,10 +51,16 @@ Generate Prisma Client:
 npm run prisma:generate
 ```
 
-Run a Prisma migration after PostgreSQL is available:
+Run a Prisma migration after PostgreSQL is available. For the complete MVP schema, use:
 
 ```bash
-npm run prisma:migrate -- --name init
+npm run prisma:migrate -- --name complete_mvp_schema
+```
+
+Seed development data after the migration. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and optionally `ADMIN_NAME` in `server/.env` first:
+
+```bash
+npm run prisma:seed
 ```
 
 Run the frontend and backend together:
@@ -78,7 +84,14 @@ Backend health: `http://localhost:5000/api/health`
 - `npm run test` - run workspace tests
 - `npm run prisma:generate` - generate Prisma Client
 - `npm run prisma:migrate -- --name <name>` - run Prisma migrations
+- `npm run prisma:seed` - create the admin user, sample categories, events, and ticket types
 
 ## JavaScript Only
 
 Do not add TypeScript files, `.tsx` files, or `tsconfig.json`. React components use `.jsx`; backend and utility files use `.js`.
+
+## Database
+
+The Prisma schema lives in `server/prisma/schema.prisma`. The MVP data model includes `User`, `Category`, `Event`, `TicketType`, `Booking`, `BookingItem`, `Payment`, `Ticket`, `Coupon`, and `AuditLog`, with enums for users, events, bookings, payments, tickets, and coupons.
+
+Bookings store server-calculated totals and line items. Ticket inventory is tracked per `TicketType`; booking and ticket creation should happen in Prisma transactions to prevent overselling.
