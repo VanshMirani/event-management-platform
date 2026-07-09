@@ -176,8 +176,72 @@ Request body:
 
 Deletes a category. Categories referenced by events return `409`.
 
+### POST `/admin/events`
+
+Creates an event. The backend generates a slug from the title, verifies `categoryId`, stores the logged-in admin as `organizerId`, and validates that `endAt` is after `startAt`.
+
+Request body:
+
+```json
+{
+  "title": "Cloud Builders Summit",
+  "description": "A full-day conference for cloud teams.",
+  "categoryId": "category_id",
+  "eventType": "OFFLINE",
+  "venueName": "NESCO Convention Centre",
+  "address": "Western Express Highway",
+  "city": "Mumbai",
+  "state": "Maharashtra",
+  "country": "India",
+  "onlineUrl": "https://events.example.com/cloud",
+  "startAt": "2026-08-01T04:30:00.000Z",
+  "endAt": "2026-08-01T12:30:00.000Z",
+  "status": "DRAFT",
+  "isFeatured": false,
+  "bannerImage": "https://example.com/banner.jpg"
+}
+```
+
+### GET `/admin/events`
+
+Returns all events, including draft and published events.
+
+### GET `/admin/events/:id`
+
+Returns one event by id.
+
+### PATCH `/admin/events/:id`
+
+Updates event fields. Changing the title regenerates the slug.
+
+### DELETE `/admin/events/:id`
+
+Deletes an event. Events referenced by related records return `409`.
+
+### PATCH `/admin/events/:id/publish`
+
+Sets event status to `PUBLISHED`.
+
+### PATCH `/admin/events/:id/unpublish`
+
+Sets event status to `DRAFT`.
+
 ## Categories
 
 ### GET `/categories`
 
 Public endpoint returning all categories sorted by name.
+
+## Events
+
+### GET `/events`
+
+Public endpoint returning only published events sorted by start date.
+
+### GET `/events/featured`
+
+Public endpoint returning only published featured events.
+
+### GET `/events/:slug`
+
+Public endpoint returning one published event by slug. Draft events return `404`.

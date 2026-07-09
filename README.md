@@ -127,7 +127,7 @@ Auth routes:
 - `/admin/users` - admin-only user management
 - `/admin/categories` - admin-only category management
 
-Admin APIs are available under `/api/admin/*` for user and category management. Public category discovery is available at `/api/categories`.
+Admin APIs are available under `/api/admin/*` for user, category, and event management. Public category discovery is available at `/api/categories`; public published events are available at `/api/events`, `/api/events/featured`, and `/api/events/:slug`.
 
 ## Scripts
 
