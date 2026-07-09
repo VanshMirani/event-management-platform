@@ -10,6 +10,8 @@
 
 - `/user/dashboard` - requires an authenticated user and shows the current user's name and email
 - `/admin/dashboard` - requires an authenticated user with role `ADMIN`
+- `/admin/users` - admin-only user table with block and unblock actions
+- `/admin/categories` - admin-only category list with create, edit, and delete actions
 
 ## Auth Behavior
 
@@ -18,3 +20,10 @@
 - Login redirects normal users to `/user/dashboard` and admins to `/admin/dashboard`.
 - Register redirects to the user dashboard after the backend creates and signs in the user.
 - Logout calls `POST /api/auth/logout`, clears React auth state, and redirects to `/login`.
+
+## Admin Behavior
+
+- Admin pages use the shared API client and send cookies with every request.
+- Normal users are redirected away from admin routes by `AdminRoute`; backend admin middleware still enforces access.
+- User management never displays `passwordHash`.
+- Category management shows backend validation errors such as duplicate names or categories still used by events.

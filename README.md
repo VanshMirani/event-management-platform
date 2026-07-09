@@ -124,6 +124,10 @@ Auth routes:
 - `/register` - create a user account
 - `/user/dashboard` - protected user dashboard
 - `/admin/dashboard` - admin-only dashboard
+- `/admin/users` - admin-only user management
+- `/admin/categories` - admin-only category management
+
+Admin APIs are available under `/api/admin/*` for user and category management. Public category discovery is available at `/api/categories`.
 
 ## Scripts
 
