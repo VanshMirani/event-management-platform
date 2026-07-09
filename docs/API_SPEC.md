@@ -90,3 +90,94 @@ Responses:
 ## Admin
 
 All `/admin/*` routes require a valid authenticated user with role `ADMIN`. Normal users receive `403`.
+
+### GET `/admin/users`
+
+Returns paginated users without `passwordHash`.
+
+Query parameters:
+
+- `page` optional, defaults to `1`
+- `limit` optional, defaults to `20`, maximum `100`
+
+### GET `/admin/users/:id`
+
+Returns one public user record.
+
+### PATCH `/admin/users/:id/status`
+
+Updates a user's status. Admins cannot block their own account.
+
+Request body:
+
+```json
+{
+  "status": "BLOCKED"
+}
+```
+
+Allowed statuses: `ACTIVE`, `BLOCKED`.
+
+### PATCH `/admin/users/:id/role`
+
+Updates a user's role. Admins cannot remove their own admin role.
+
+Request body:
+
+```json
+{
+  "role": "ORGANIZER"
+}
+```
+
+Allowed roles: `USER`, `ADMIN`, `ORGANIZER`.
+
+### POST `/admin/categories`
+
+Creates a category. The backend validates unique names and generates a slug from the name.
+
+Request body:
+
+```json
+{
+  "name": "Technology",
+  "description": "Developer conferences and workshops"
+}
+```
+
+Responses:
+
+- `201` category created
+- `400` validation failed
+- `409` duplicate category name
+
+### GET `/admin/categories`
+
+Returns all categories sorted by name.
+
+### GET `/admin/categories/:id`
+
+Returns one category.
+
+### PATCH `/admin/categories/:id`
+
+Updates category name and/or description. Changing the name regenerates the slug.
+
+Request body:
+
+```json
+{
+  "name": "Business",
+  "description": "Founder and operator events"
+}
+```
+
+### DELETE `/admin/categories/:id`
+
+Deletes a category. Categories referenced by events return `409`.
+
+## Categories
+
+### GET `/categories`
+
+Public endpoint returning all categories sorted by name.

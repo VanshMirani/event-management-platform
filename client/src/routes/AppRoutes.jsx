@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { AdminCategoriesPage } from "../pages/AdminCategoriesPage.jsx";
 import { AdminDashboardPage } from "../pages/AdminDashboardPage.jsx";
+import { AdminUsersPage } from "../pages/AdminUsersPage.jsx";
 import { HomePage } from "../pages/HomePage.jsx";
 import { LoginPage } from "../pages/LoginPage.jsx";
 import { RegisterPage } from "../pages/RegisterPage.jsx";
@@ -26,6 +28,22 @@ export function AppRoutes() {
         element={
           <AdminRoute>
             <AdminDashboardPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <AdminRoute>
+            <AdminUsersPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/categories"
+        element={
+          <AdminRoute>
+            <AdminCategoriesPage />
           </AdminRoute>
         }
       />

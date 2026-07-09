@@ -55,3 +55,18 @@ export function apiPost(path, data, options = {}) {
     body: JSON.stringify(data ?? {})
   });
 }
+
+export function apiPatch(path, data, options = {}) {
+  return apiRequest(path, {
+    ...options,
+    method: "PATCH",
+    body: JSON.stringify(data ?? {})
+  });
+}
+
+export function apiDelete(path, options = {}) {
+  return apiRequest(path, {
+    ...options,
+    method: "DELETE"
+  });
+}
