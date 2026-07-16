@@ -146,16 +146,16 @@ export function EventDetailPage() {
     <AppLayout>
       {isLoading ? (
         <section className="mx-auto w-full max-w-6xl px-5 py-10">
-          <p className="rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+          <p className="state-card p-5 text-sm font-semibold text-ink/60">
             Loading event...
           </p>
         </section>
       ) : error ? (
         <section className="mx-auto w-full max-w-6xl px-5 py-10">
-          <div className="rounded-lg border border-ember/20 bg-ember/10 p-5">
+          <div className="rounded-lg border border-ember/20 bg-ember/10 p-5 shadow-lift">
             <p className="text-sm font-semibold text-ember">{error}</p>
             <Link
-              className="mt-4 inline-flex rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white hover:bg-ember"
+              className="action-secondary mt-4 inline-flex px-4 py-2 text-sm font-bold"
               to="/events"
             >
               Back to events
@@ -166,7 +166,7 @@ export function EventDetailPage() {
         <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
           <img
             alt=""
-            className="h-[320px] w-full rounded-lg object-cover shadow-soft"
+            className="h-[320px] w-full rounded-lg border border-slate-200 object-cover shadow-glow"
             src={event.bannerImage || fallbackImage}
           />
 
@@ -183,11 +183,11 @@ export function EventDetailPage() {
               </p>
 
               <div className="mt-8">
-                <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+                <p className="section-kicker">
                   Tickets
                 </p>
                 {ticketTypes.length === 0 ? (
-                  <p className="mt-3 rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+                  <p className="state-card mt-3 p-5 text-sm font-semibold text-ink/60">
                     Ticket types are not available yet.
                   </p>
                 ) : (
@@ -197,10 +197,10 @@ export function EventDetailPage() {
 
                       return (
                         <button
-                          className={`rounded-lg border bg-white p-5 text-left shadow-sm transition ${
+                          className={`rounded-lg border p-5 text-left shadow-lift transition hover:-translate-y-1 ${
                             isSelected
-                              ? "border-mint ring-2 ring-mint/15"
-                              : "border-ink/10 hover:border-mint"
+                              ? "border-cyan bg-cyan/10 ring-2 ring-cyan/20"
+                              : "border-slate-200 bg-white/90 hover:border-cyan"
                           }`}
                           key={ticketType.id}
                           onClick={() => selectTicketType(ticketType.id)}
@@ -215,7 +215,7 @@ export function EventDetailPage() {
                                 </p>
                               ) : null}
                             </div>
-                            <p className="rounded-lg bg-mint/10 px-3 py-1 text-sm font-bold text-mint">
+                            <p className="rounded-lg border border-mint/20 bg-mint/10 px-3 py-1 text-sm font-extrabold text-mint">
                               {formatCurrency(ticketType.price, ticketType.currency)}
                             </p>
                           </div>
@@ -231,8 +231,8 @@ export function EventDetailPage() {
               </div>
             </div>
 
-            <aside className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+            <aside className="surface-card rounded-lg p-5">
+              <p className="section-kicker">
                 Schedule
               </p>
               <p className="mt-3 text-sm font-bold text-ink">Starts</p>
@@ -285,7 +285,7 @@ export function EventDetailPage() {
                       value={quantity}
                     />
 
-                    <div className="mt-5 rounded-lg bg-linen p-4">
+                    <div className="mt-5 rounded-lg border border-cyan/10 bg-cyan/5 p-4">
                       <div className="flex items-center justify-between gap-4 text-sm">
                         <span className="font-semibold text-ink/65">Estimated total</span>
                         <span className="text-lg font-extrabold text-ink">
@@ -309,7 +309,7 @@ export function EventDetailPage() {
                 ) : null}
 
                 <button
-                  className="mt-5 w-full rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink/40"
+                  className="action-primary mt-5 w-full px-5 py-3 text-sm font-extrabold disabled:cursor-not-allowed"
                   disabled={
                     isBooking ||
                     isCheckingAuth ||

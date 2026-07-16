@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getAdminDashboard } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
+import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useAuth } from "../features/auth/index.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
@@ -92,14 +93,14 @@ export function AdminDashboardPage() {
       <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-16">
         <AdminNav />
 
-        <div className="mt-8 rounded-lg bg-ink p-6 text-white shadow-soft">
-          <p className="text-sm font-semibold uppercase tracking-wide text-white/60">
+        <div className="hero-panel mt-8 rounded-lg p-6">
+          <p className="text-sm font-extrabold uppercase tracking-wide text-cyan">
             Admin dashboard
           </p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-normal sm:text-4xl">
             Welcome back, {currentUser?.name ?? "admin"}.
           </h1>
-          <p className="mt-3 max-w-2xl text-white/70">
+          <p className="mt-3 max-w-2xl text-ink/70">
             Manage events, bookings, users, and platform operations from this
             workspace.
           </p>
@@ -108,16 +109,16 @@ export function AdminDashboardPage() {
         <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {dashboardCards.map((card) => (
             <Link
-              className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm transition hover:border-mint hover:shadow-soft"
+              className="surface-card rounded-lg p-5 transition hover:-translate-y-1 hover:border-cyan/40 hover:shadow-glow"
               id={card.id}
               key={card.title}
               to={card.to}
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+                <p className="text-sm font-extrabold uppercase tracking-wide text-mint">
                   {card.title}
                 </p>
-                <span className="rounded-lg bg-linen px-3 py-1 text-xs font-bold text-ink/60">
+                <span className="rounded-lg border border-mint/20 bg-mint/10 px-3 py-1 text-xs font-extrabold text-mint">
                   {card.status}
                 </span>
               </div>
@@ -132,7 +133,7 @@ export function AdminDashboardPage() {
         <div className="mt-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+              <p className="section-kicker">
                 Live operations
               </p>
               <h2 className="mt-2 text-2xl font-extrabold tracking-normal text-ink">
@@ -141,7 +142,7 @@ export function AdminDashboardPage() {
             </div>
             {error ? (
               <button
-                className="rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white hover:bg-ember"
+                className="action-primary px-4 py-2 text-sm font-bold"
                 onClick={loadDashboard}
                 type="button"
               >
@@ -151,34 +152,34 @@ export function AdminDashboardPage() {
           </div>
 
           {isLoading ? (
-            <p className="mt-5 rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+            <p className="state-card mt-5 p-5 text-sm font-semibold text-ink/60">
               Loading dashboard stats...
             </p>
           ) : error ? (
-            <p className="mt-5 rounded-lg border border-ember/20 bg-ember/10 p-5 text-sm font-semibold text-ember">
+            <p className="mt-5 rounded-lg border border-ember/20 bg-ember/10 p-5 text-sm font-semibold text-ember shadow-lift">
               {error}
             </p>
           ) : (
             <>
               <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+                <div className="surface-card rounded-lg p-5">
+                  <p className="text-sm font-extrabold uppercase tracking-wide text-mint">
                     Users
                   </p>
                   <p className="mt-2 text-3xl font-extrabold text-ink">
                     {stats.totalUsers}
                   </p>
                 </div>
-                <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+                <div className="surface-card rounded-lg p-5">
+                  <p className="text-sm font-extrabold uppercase tracking-wide text-mint">
                     Events
                   </p>
                   <p className="mt-2 text-3xl font-extrabold text-ink">
                     {stats.totalEvents}
                   </p>
                 </div>
-                <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+                <div className="surface-card rounded-lg p-5">
+                  <p className="text-sm font-extrabold uppercase tracking-wide text-mint">
                     Bookings
                   </p>
                   <p className="mt-2 text-3xl font-extrabold text-ink">
@@ -188,8 +189,8 @@ export function AdminDashboardPage() {
                     {stats.confirmedBookings} confirmed, {stats.pendingBookings} pending
                   </p>
                 </div>
-                <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+                <div className="surface-card rounded-lg p-5">
+                  <p className="text-sm font-extrabold uppercase tracking-wide text-mint">
                     Revenue
                   </p>
                   <p className="mt-2 text-3xl font-extrabold text-ink">
@@ -202,7 +203,7 @@ export function AdminDashboardPage() {
               </div>
 
               <div className="mt-6 grid gap-5 lg:grid-cols-2">
-                <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
+                <div className="surface-card rounded-lg p-5">
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="text-lg font-extrabold text-ink">Recent bookings</h3>
                     <Link className="text-sm font-bold text-mint hover:text-ember" to="/admin/bookings">
@@ -219,7 +220,7 @@ export function AdminDashboardPage() {
                         <div className="py-4" key={booking.id}>
                           <p className="font-bold text-ink">{booking.bookingCode}</p>
                           <p className="mt-1 text-sm text-ink/65">
-                            {booking.user?.email} - {booking.status} -{" "}
+                            {booking.user?.email} <StatusBadge className="mx-2" status={booking.status} />{" "}
                             {formatCurrency(booking.finalAmount, booking.currency)}
                           </p>
                         </div>
@@ -228,7 +229,7 @@ export function AdminDashboardPage() {
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
+                <div className="surface-card rounded-lg p-5">
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="text-lg font-extrabold text-ink">Recent payments</h3>
                     <Link className="text-sm font-bold text-mint hover:text-ember" to="/admin/payments">
@@ -245,7 +246,8 @@ export function AdminDashboardPage() {
                         <div className="py-4" key={payment.id}>
                           <p className="font-bold text-ink">{payment.providerPaymentId ?? payment.id}</p>
                           <p className="mt-1 text-sm text-ink/65">
-                            {payment.status} - {formatCurrency(payment.amount, payment.currency)} -{" "}
+                            <StatusBadge className="mr-2" status={payment.status} />{" "}
+                            {formatCurrency(payment.amount, payment.currency)} -{" "}
                             {formatDateTime(payment.createdAt)}
                           </p>
                         </div>

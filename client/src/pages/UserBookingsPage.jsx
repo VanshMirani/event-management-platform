@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listMyBookings } from "../api/bookings.js";
+import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
@@ -35,7 +36,7 @@ export function UserBookingsPage() {
       <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+            <p className="section-kicker">
               My bookings
             </p>
             <h1 className="mt-2 text-4xl font-extrabold tracking-normal text-ink">
@@ -43,7 +44,7 @@ export function UserBookingsPage() {
             </h1>
           </div>
           <Link
-            className="rounded-lg bg-ember px-4 py-2 text-sm font-bold text-white hover:bg-ink"
+            className="action-primary px-4 py-2 text-sm font-bold"
             to="/events"
           >
             Browse events
@@ -51,14 +52,14 @@ export function UserBookingsPage() {
         </div>
 
         {isLoading ? (
-          <p className="mt-6 rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+          <p className="state-card mt-6 p-5 text-sm font-semibold text-ink/60">
             Loading bookings...
           </p>
         ) : error ? (
-          <div className="mt-6 rounded-lg border border-ember/20 bg-ember/10 p-5">
+          <div className="mt-6 rounded-lg border border-ember/20 bg-ember/10 p-5 shadow-lift">
             <p className="text-sm font-semibold text-ember">{error}</p>
             <button
-              className="mt-4 rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white hover:bg-ember"
+              className="action-primary mt-4 px-4 py-2 text-sm font-bold"
               onClick={loadBookings}
               type="button"
             >
@@ -66,11 +67,14 @@ export function UserBookingsPage() {
             </button>
           </div>
         ) : bookings.length === 0 ? (
-          <p className="mt-6 rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
-            No bookings yet.
-          </p>
+          <div className="state-card mt-6 p-6">
+            <p className="text-lg font-extrabold text-ink">No bookings yet.</p>
+            <p className="mt-2 text-sm font-semibold text-ink/60">
+              Browse events and reserve tickets when you are ready.
+            </p>
+          </div>
         ) : (
-          <div className="mt-6 overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
+          <div className="surface-card mt-6 overflow-hidden rounded-lg">
             <div className="divide-y divide-ink/10">
               {bookings.map((booking) => {
                 const bookingItem = booking.items?.[0] ?? null;
@@ -85,9 +89,7 @@ export function UserBookingsPage() {
                         <p className="text-lg font-bold text-ink">
                           {booking.event?.title ?? "Event"}
                         </p>
-                        <span className="rounded-lg bg-ember/10 px-3 py-1 text-xs font-bold text-ember">
-                          {booking.status}
-                        </span>
+                        <StatusBadge status={booking.status} />
                       </div>
                       <p className="mt-2 text-sm text-ink/65">
                         {bookingItem?.ticketType?.name ?? "Ticket"} - Quantity{" "}
@@ -103,7 +105,7 @@ export function UserBookingsPage() {
                         {formatCurrency(booking.totalAmount, booking.currency)}
                       </p>
                       <Link
-                        className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
+                        className="action-secondary px-4 py-2 text-sm font-bold"
                         to={`/checkout/${booking.id}`}
                       >
                         View

@@ -143,7 +143,7 @@ export function AdminEventForm({
 
   return (
     <form
-      className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm"
+      className="surface-card rounded-lg p-5"
       onSubmit={handleSubmit}
     >
       <div className="grid gap-5 md:grid-cols-2">
@@ -361,7 +361,7 @@ export function AdminEventForm({
       ) : null}
 
       <button
-        className="mt-6 rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink/40"
+        className="action-primary mt-6 px-5 py-3 text-sm font-bold disabled:cursor-not-allowed"
         disabled={isSaving || isLoadingCategories}
         type="submit"
       >

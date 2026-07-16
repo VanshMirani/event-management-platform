@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { listAdminUsers, updateAdminUserStatus } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
+import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useAuth } from "../features/auth/index.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
@@ -75,14 +76,14 @@ export function AdminUsersPage() {
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+            <p className="section-kicker">
               User management
             </p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
               Platform users
             </h1>
           </div>
-          <p className="rounded-lg border border-ink/10 bg-white px-4 py-2 text-sm font-bold text-ink/70">
+          <p className="surface-card rounded-lg px-4 py-2 text-sm font-bold text-ink/70">
             {userCountLabel}
           </p>
         </div>
@@ -93,14 +94,14 @@ export function AdminUsersPage() {
           </p>
         ) : null}
 
-        <div className="mt-6 overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
+        <div className="surface-card mt-6 overflow-hidden rounded-lg">
           {isLoading ? (
             <p className="p-6 text-sm font-semibold text-ink/60">Loading users...</p>
           ) : error ? (
             <div className="p-6">
               <p className="text-sm font-semibold text-ember">{error}</p>
               <button
-                className="mt-4 rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white hover:bg-ember"
+                className="action-primary mt-4 px-4 py-2 text-sm font-bold"
                 onClick={loadUsers}
                 type="button"
               >
@@ -133,20 +134,12 @@ export function AdminUsersPage() {
                         <td className="px-4 py-4 font-bold text-ink">{user.name}</td>
                         <td className="px-4 py-4 text-ink/70">{user.email}</td>
                         <td className="px-4 py-4">
-                          <span className="rounded-lg bg-mint/10 px-3 py-1 text-xs font-bold text-mint">
+                          <span className="rounded-lg border border-aurora/20 bg-aurora/10 px-3 py-1 text-xs font-extrabold text-aurora">
                             {user.role}
                           </span>
                         </td>
                         <td className="px-4 py-4">
-                          <span
-                            className={`rounded-lg px-3 py-1 text-xs font-bold ${
-                              user.status === "ACTIVE"
-                                ? "bg-mint/10 text-mint"
-                                : "bg-ember/10 text-ember"
-                            }`}
-                          >
-                            {user.status}
-                          </span>
+                          <StatusBadge status={user.status} />
                         </td>
                         <td className="px-4 py-4 text-ink/65">{formatDate(user.createdAt)}</td>
                         <td className="px-4 py-4">

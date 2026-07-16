@@ -32,7 +32,7 @@ export function AdminEventCreatePage() {
       <section className="mx-auto w-full max-w-5xl px-5 py-10 lg:py-14">
         <AdminNav />
         <div className="mt-8">
-          <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+          <p className="section-kicker">
             Event management
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">

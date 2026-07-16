@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getAdminBooking } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
+import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
@@ -38,14 +39,14 @@ export function AdminBookingDetailPage() {
         <AdminNav />
 
         {isLoading ? (
-          <p className="mt-6 rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+          <p className="state-card mt-6 p-5 text-sm font-semibold text-ink/60">
             Loading booking...
           </p>
         ) : error ? (
-          <div className="mt-6 rounded-lg border border-ember/20 bg-ember/10 p-5">
+          <div className="mt-6 rounded-lg border border-ember/20 bg-ember/10 p-5 shadow-lift">
             <p className="text-sm font-semibold text-ember">{error}</p>
             <button
-              className="mt-4 rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white hover:bg-ember"
+              className="action-primary mt-4 px-4 py-2 text-sm font-bold"
               onClick={loadBooking}
               type="button"
             >
@@ -55,8 +56,8 @@ export function AdminBookingDetailPage() {
         ) : (
           <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
             <div className="space-y-6">
-              <div className="rounded-lg border border-ink/10 bg-white p-6 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+              <div className="surface-card rounded-lg p-6">
+                <p className="section-kicker">
                   Booking
                 </p>
                 <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
@@ -67,7 +68,9 @@ export function AdminBookingDetailPage() {
                     <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
                       Status
                     </p>
-                    <p className="mt-1 font-bold text-ink">{booking.status}</p>
+                    <div className="mt-1">
+                      <StatusBadge status={booking.status} />
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
@@ -88,8 +91,8 @@ export function AdminBookingDetailPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-ink/10 bg-white p-6 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+              <div className="surface-card rounded-lg p-6">
+                <p className="section-kicker">
                   Booking items
                 </p>
                 <div className="mt-4 divide-y divide-ink/10">
@@ -115,16 +118,16 @@ export function AdminBookingDetailPage() {
             </div>
 
             <aside className="space-y-6">
-              <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+              <div className="surface-card rounded-lg p-5">
+                <p className="section-kicker">
                   User
                 </p>
                 <p className="mt-3 font-bold text-ink">{booking.user?.name}</p>
                 <p className="mt-1 text-sm text-ink/65">{booking.user?.email}</p>
               </div>
 
-              <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+              <div className="surface-card rounded-lg p-5">
+                <p className="section-kicker">
                   Event
                 </p>
                 <p className="mt-3 font-bold text-ink">{booking.event?.title}</p>
@@ -133,13 +136,15 @@ export function AdminBookingDetailPage() {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+              <div className="surface-card rounded-lg p-5">
+                <p className="section-kicker">
                   Payment
                 </p>
                 {booking.payment ? (
                   <>
-                    <p className="mt-3 font-bold text-ink">{booking.payment.status}</p>
+                    <div className="mt-3">
+                      <StatusBadge status={booking.payment.status} />
+                    </div>
                     <p className="mt-1 text-sm text-ink/65">
                       {booking.payment.providerOrderId}
                     </p>

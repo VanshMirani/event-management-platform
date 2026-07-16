@@ -79,7 +79,7 @@ export function AdminEventEditPage() {
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+            <p className="section-kicker">
               Event management
             </p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
@@ -89,7 +89,7 @@ export function AdminEventEditPage() {
           <div className="flex flex-wrap gap-3">
             {event ? (
               <button
-                className="rounded-lg border border-ink/15 bg-white px-5 py-3 text-sm font-bold text-ink hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:text-ink/35"
+                className="action-secondary px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:text-ink/35"
                 disabled={isPublishing}
                 onClick={handleTogglePublish}
                 type="button"
@@ -102,7 +102,7 @@ export function AdminEventEditPage() {
               </button>
             ) : null}
             <Link
-              className="rounded-lg bg-ink px-5 py-3 text-sm font-bold text-white hover:bg-ember"
+              className="action-secondary px-5 py-3 text-sm font-bold"
               to="/admin/events"
             >
               Back to events
@@ -111,11 +111,11 @@ export function AdminEventEditPage() {
         </div>
 
         {isLoading ? (
-          <p className="mt-6 rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+          <p className="state-card mt-6 p-5 text-sm font-semibold text-ink/60">
             Loading event...
           </p>
         ) : error ? (
-          <p className="mt-6 rounded-lg border border-ember/20 bg-ember/10 p-5 text-sm font-semibold text-ember">
+          <p className="mt-6 rounded-lg border border-ember/20 bg-ember/10 p-5 text-sm font-semibold text-ember shadow-lift">
             {error}
           </p>
         ) : (

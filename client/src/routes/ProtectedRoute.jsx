@@ -4,8 +4,8 @@ import { useAuth } from "../features/auth/index.js";
 function RouteLoadingState() {
   return (
     <div className="min-h-screen bg-linen px-5 py-16 text-ink">
-      <div className="mx-auto max-w-3xl rounded-lg border border-ink/10 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+      <div className="surface-card mx-auto max-w-3xl rounded-lg p-6">
+        <p className="section-kicker">
           Checking session
         </p>
         <p className="mt-2 text-lg font-bold">Loading your account...</p>

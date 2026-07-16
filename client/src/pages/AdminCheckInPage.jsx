@@ -4,6 +4,7 @@ import {
   verifyAdminTicket
 } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
+import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatDateTime } from "../utils/formatDate.js";
@@ -74,10 +75,10 @@ export function AdminCheckInPage() {
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
           <form
-            className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm"
+            className="surface-card rounded-lg p-5"
             onSubmit={handleVerify}
           >
-            <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+            <p className="section-kicker">
               Check-in
             </p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
@@ -93,7 +94,7 @@ export function AdminCheckInPage() {
               value={lookup}
             />
             <button
-              className="mt-5 rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink/40"
+              className="action-primary mt-5 px-5 py-3 text-sm font-bold disabled:cursor-not-allowed"
               disabled={isVerifying}
               type="submit"
             >
@@ -101,18 +102,18 @@ export function AdminCheckInPage() {
             </button>
           </form>
 
-          <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+          <div className="surface-card rounded-lg p-5">
+            <p className="section-kicker">
               Ticket details
             </p>
 
             {error ? (
-              <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember">
+              <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember shadow-lift">
                 {error}
               </p>
             ) : null}
             {message ? (
-              <p className="mt-4 rounded-lg border border-mint/20 bg-mint/10 px-4 py-3 text-sm font-semibold text-mint">
+              <p className="mt-4 rounded-lg border border-mint/20 bg-mint/10 px-4 py-3 text-sm font-semibold text-mint shadow-lift">
                 {message}
               </p>
             ) : null}
@@ -143,7 +144,9 @@ export function AdminCheckInPage() {
                         Ticket
                       </p>
                       <p className="mt-1 font-bold text-ink">{ticket.ticketCode}</p>
-                      <p className="mt-1 text-sm text-ink/65">{ticket.status}</p>
+                      <div className="mt-2">
+                        <StatusBadge status={ticket.status} />
+                      </div>
                     </div>
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
@@ -156,7 +159,7 @@ export function AdminCheckInPage() {
                   </div>
 
                   <button
-                    className="mt-6 rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink/40"
+                    className="action-primary mt-6 px-5 py-3 text-sm font-bold disabled:cursor-not-allowed"
                     disabled={isMarking || ticket.status !== "VALID"}
                     onClick={handleMarkUsed}
                     type="button"
@@ -167,7 +170,7 @@ export function AdminCheckInPage() {
                 {ticket.qrCodeUrl ? (
                   <img
                     alt=""
-                    className="h-40 w-40 rounded-lg border border-ink/10 bg-white object-contain p-2"
+                    className="h-40 w-40 rounded-lg border border-cyan/20 bg-white object-contain p-2 shadow-lift"
                     src={ticket.qrCodeUrl}
                   />
                 ) : null}

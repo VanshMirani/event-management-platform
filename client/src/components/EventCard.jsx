@@ -7,25 +7,31 @@ const fallbackImage =
 export function EventCard({ event }) {
   return (
     <Link
-      className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm transition hover:border-mint hover:shadow-soft"
+      className="group surface-card overflow-hidden rounded-lg transition duration-200 hover:-translate-y-1 hover:border-cyan/40 hover:shadow-glow"
       to={`/events/${event.slug}`}
     >
-      <img
-        alt=""
-        className="h-44 w-full object-cover"
-        loading="lazy"
-        src={event.bannerImage || fallbackImage}
-      />
+      <div className="relative h-48 overflow-hidden">
+        <img
+          alt=""
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          loading="lazy"
+          src={event.bannerImage || fallbackImage}
+        />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ink/35 to-transparent" />
+        <span className="absolute left-4 top-4 rounded-lg border border-cyan/20 bg-white/90 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-cyan shadow-lift backdrop-blur">
+          {event.category?.name ?? "Event"}
+        </span>
+      </div>
       <div className="p-5">
-        <div className="flex items-center justify-between gap-3 text-sm text-ink/60">
+        <div className="flex items-center justify-between gap-3 text-sm font-semibold text-ink/55">
           <span>{event.city || event.eventType}</span>
           <span>{formatDateTime(event.startAt)}</span>
         </div>
-        <h3 className="mt-3 text-xl font-bold tracking-normal text-ink">
+        <h3 className="mt-3 text-xl font-extrabold tracking-normal text-ink transition group-hover:text-cyan">
           {event.title}
         </h3>
-        <p className="mt-3 text-sm font-semibold text-mint">
-          {event.category?.name ?? "Event"}
+        <p className="mt-4 inline-flex text-sm font-extrabold text-ember">
+          View details
         </p>
       </div>
     </Link>

@@ -26,31 +26,31 @@ export function EventHighlights() {
   }, []);
 
   return (
-    <section id="events" className="mx-auto w-full max-w-6xl px-5 py-12">
+    <section id="events" className="mx-auto w-full max-w-6xl px-5 py-14">
       <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+          <p className="section-kicker">
             Featured events
           </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-normal text-ink">
+          <h2 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
             Upcoming experiences
           </h2>
         </div>
-        <Link className="text-sm font-semibold text-ember hover:text-ink" to="/events">
+        <Link className="action-secondary px-4 py-2 text-sm font-extrabold" to="/events">
           View all
         </Link>
       </div>
 
       {isLoading ? (
-        <p className="rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+        <p className="state-card p-5 text-sm font-semibold text-ink/60">
           Loading featured events...
         </p>
       ) : error ? (
-        <p className="rounded-lg border border-ember/20 bg-ember/10 p-5 text-sm font-semibold text-ember">
+        <p className="rounded-lg border border-ember/20 bg-ember/10 p-5 text-sm font-semibold text-ember shadow-lift">
           {error}
         </p>
       ) : events.length === 0 ? (
-        <p className="rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+        <p className="state-card p-5 text-sm font-semibold text-ink/60">
           No featured events are published yet.
         </p>
       ) : (

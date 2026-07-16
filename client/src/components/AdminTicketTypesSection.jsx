@@ -5,6 +5,7 @@ import {
   listAdminEventTicketTypes,
   updateAdminTicketType
 } from "../api/admin.js";
+import { StatusBadge } from "./StatusBadge.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "../utils/formatDate.js";
 
@@ -203,10 +204,10 @@ export function AdminTicketTypesSection({ eventId }) {
   return (
     <section className="mt-8 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
       <form
-        className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm"
+        className="surface-card rounded-lg p-5"
         onSubmit={handleSubmit}
       >
-        <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+        <p className="section-kicker">
           Ticket types
         </p>
         <h2 className="mt-2 text-2xl font-extrabold tracking-normal text-ink">
@@ -355,7 +356,7 @@ export function AdminTicketTypesSection({ eventId }) {
 
         <div className="mt-6 flex flex-wrap gap-3">
           <button
-            className="rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink/40"
+            className="action-primary px-5 py-3 text-sm font-bold disabled:cursor-not-allowed"
             disabled={isSaving}
             type="submit"
           >
@@ -373,7 +374,7 @@ export function AdminTicketTypesSection({ eventId }) {
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
+      <div className="surface-card overflow-hidden rounded-lg">
         <div className="flex items-center justify-between gap-4 border-b border-ink/10 px-5 py-4">
           <h2 className="text-xl font-extrabold tracking-normal text-ink">
             Ticket type list
@@ -387,7 +388,7 @@ export function AdminTicketTypesSection({ eventId }) {
           <div className="p-6">
             <p className="text-sm font-semibold text-ember">{error}</p>
             <button
-              className="mt-4 rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white hover:bg-ember"
+              className="action-primary mt-4 px-4 py-2 text-sm font-bold"
               onClick={loadTicketTypes}
               type="button"
             >
@@ -409,15 +410,7 @@ export function AdminTicketTypesSection({ eventId }) {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-bold text-ink">{ticketType.name}</p>
-                      <span
-                        className={`rounded-lg px-3 py-1 text-xs font-bold ${
-                          ticketType.status === "ACTIVE"
-                            ? "bg-mint/10 text-mint"
-                            : "bg-ember/10 text-ember"
-                        }`}
-                      >
-                        {ticketType.status}
-                      </span>
+                      <StatusBadge status={ticketType.status} />
                     </div>
                     <p className="mt-2 text-sm font-semibold text-mint">
                       {formatCurrency(ticketType.price, ticketType.currency)}
@@ -437,7 +430,7 @@ export function AdminTicketTypesSection({ eventId }) {
                       Edit
                     </button>
                     <button
-                      className="rounded-lg border border-ember/30 px-4 py-2 text-sm font-bold text-ember hover:bg-ember hover:text-white disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
+                      className="danger-button px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
                       disabled={isDeleting}
                       onClick={() => handleDelete(ticketType)}
                       type="button"

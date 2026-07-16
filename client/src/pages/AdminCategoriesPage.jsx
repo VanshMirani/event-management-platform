@@ -155,10 +155,10 @@ export function AdminCategoriesPage() {
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
           <form
-            className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm"
+            className="surface-card rounded-lg p-5"
             onSubmit={handleSubmit}
           >
-            <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+            <p className="section-kicker">
               Categories
             </p>
             <h1 className="mt-2 text-2xl font-extrabold tracking-normal text-ink">
@@ -200,7 +200,7 @@ export function AdminCategoriesPage() {
 
             <div className="mt-6 flex flex-wrap gap-3">
               <button
-                className="rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink/40"
+                className="action-primary px-5 py-3 text-sm font-bold disabled:cursor-not-allowed"
                 disabled={isSaving}
                 type="submit"
               >
@@ -208,7 +208,7 @@ export function AdminCategoriesPage() {
               </button>
               {editingCategoryId ? (
                 <button
-                  className="rounded-lg border border-ink/15 px-5 py-3 text-sm font-bold text-ink hover:border-mint hover:text-mint"
+                  className="action-secondary px-5 py-3 text-sm font-bold"
                   onClick={resetForm}
                   type="button"
                 >
@@ -218,7 +218,7 @@ export function AdminCategoriesPage() {
             </div>
           </form>
 
-          <div className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
+          <div className="surface-card overflow-hidden rounded-lg">
             <div className="flex items-center justify-between gap-4 border-b border-ink/10 px-5 py-4">
               <h2 className="text-xl font-extrabold tracking-normal text-ink">
                 Category list
@@ -234,7 +234,7 @@ export function AdminCategoriesPage() {
               <div className="p-6">
                 <p className="text-sm font-semibold text-ember">{error}</p>
                 <button
-                  className="mt-4 rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white hover:bg-ember"
+                  className="action-primary mt-4 px-4 py-2 text-sm font-bold"
                   onClick={loadCategories}
                   type="button"
                 >
@@ -272,7 +272,7 @@ export function AdminCategoriesPage() {
                           Edit
                         </button>
                         <button
-                          className="rounded-lg border border-ember/30 px-4 py-2 text-sm font-bold text-ember hover:bg-ember hover:text-white disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
+                          className="danger-button px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
                           disabled={isDeleting}
                           onClick={() => handleDelete(category)}
                           type="button"

@@ -7,23 +7,10 @@ import {
   unpublishAdminEvent
 } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
+import { StatusBadge } from "../components/StatusBadge.jsx";
 import { formatDateTime } from "../utils/formatDate.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
-
-function StatusBadge({ status }) {
-  const isPublished = status === "PUBLISHED";
-
-  return (
-    <span
-      className={`rounded-lg px-3 py-1 text-xs font-bold ${
-        isPublished ? "bg-mint/10 text-mint" : "bg-ember/10 text-ember"
-      }`}
-    >
-      {status}
-    </span>
-  );
-}
 
 export function AdminEventsPage() {
   useDocumentTitle("Admin Events | EventFlow");
@@ -101,7 +88,7 @@ export function AdminEventsPage() {
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+            <p className="section-kicker">
               Event management
             </p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
@@ -109,7 +96,7 @@ export function AdminEventsPage() {
             </h1>
           </div>
           <Link
-            className="rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink"
+            className="action-primary px-5 py-3 text-sm font-bold"
             to="/admin/events/create"
           >
             Create event
@@ -122,14 +109,14 @@ export function AdminEventsPage() {
           </p>
         ) : null}
 
-        <div className="mt-6 overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
+        <div className="surface-card mt-6 overflow-hidden rounded-lg">
           {isLoading ? (
             <p className="p-6 text-sm font-semibold text-ink/60">Loading events...</p>
           ) : error ? (
             <div className="p-6">
               <p className="text-sm font-semibold text-ember">{error}</p>
               <button
-                className="mt-4 rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white hover:bg-ember"
+                className="action-primary mt-4 px-4 py-2 text-sm font-bold"
                 onClick={loadEvents}
                 type="button"
               >
@@ -193,7 +180,7 @@ export function AdminEventsPage() {
                                   : "Publish"}
                             </button>
                             <button
-                              className="rounded-lg border border-ember/30 px-3 py-2 text-sm font-bold text-ember hover:bg-ember hover:text-white disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
+                              className="danger-button px-3 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
                               disabled={isBusy}
                               onClick={() => handleDelete(event)}
                               type="button"

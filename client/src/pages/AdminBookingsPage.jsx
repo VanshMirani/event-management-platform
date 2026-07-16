@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAdminBookings } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
+import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
@@ -67,20 +68,20 @@ export function AdminBookingsPage() {
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+            <p className="section-kicker">
               Booking management
             </p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
               Bookings
             </h1>
           </div>
-          <p className="rounded-lg border border-ink/10 bg-white px-4 py-2 text-sm font-bold text-ink/70">
+          <p className="surface-card rounded-lg px-4 py-2 text-sm font-bold text-ink/70">
             {pagination ? `${pagination.total} bookings` : `${bookings.length} bookings`}
           </p>
         </div>
 
         <form
-          className="mt-6 grid gap-3 rounded-lg border border-ink/10 bg-white p-4 shadow-sm md:grid-cols-[1fr_220px_auto_auto]"
+          className="surface-card mt-6 grid gap-3 rounded-lg p-4 md:grid-cols-[1fr_220px_auto_auto]"
           onSubmit={handleSubmit}
         >
           <input
@@ -104,7 +105,7 @@ export function AdminBookingsPage() {
             ))}
           </select>
           <button
-            className="rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink"
+            className="action-primary px-5 py-3 text-sm font-bold"
             type="submit"
           >
             Filter
@@ -118,14 +119,14 @@ export function AdminBookingsPage() {
           </button>
         </form>
 
-        <div className="mt-6 overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
+        <div className="surface-card mt-6 overflow-hidden rounded-lg">
           {isLoading ? (
             <p className="p-6 text-sm font-semibold text-ink/60">Loading bookings...</p>
           ) : error ? (
             <div className="p-6">
               <p className="text-sm font-semibold text-ember">{error}</p>
               <button
-                className="mt-4 rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white hover:bg-ember"
+                className="action-primary mt-4 px-4 py-2 text-sm font-bold"
                 onClick={() => loadBookings()}
                 type="button"
               >
@@ -159,15 +160,17 @@ export function AdminBookingsPage() {
                       </td>
                       <td className="px-4 py-4 text-ink/70">{booking.event?.title}</td>
                       <td className="px-4 py-4">
-                        <span className="rounded-lg bg-mint/10 px-3 py-1 text-xs font-bold text-mint">
-                          {booking.status}
-                        </span>
+                        <StatusBadge status={booking.status} />
                       </td>
                       <td className="px-4 py-4 font-bold text-ink">
                         {formatCurrency(booking.finalAmount, booking.currency)}
                       </td>
                       <td className="px-4 py-4 text-ink/70">
-                        {booking.paymentStatus ?? "No payment"}
+                        {booking.paymentStatus ? (
+                          <StatusBadge status={booking.paymentStatus} />
+                        ) : (
+                          "No payment"
+                        )}
                       </td>
                       <td className="px-4 py-4 text-ink/65">
                         {formatDateTime(booking.createdAt)}

@@ -12,7 +12,7 @@ export function PaymentFailedPage() {
   return (
     <AppLayout>
       <section className="mx-auto w-full max-w-3xl px-5 py-16">
-        <div className="rounded-lg border border-ember/20 bg-white p-8 shadow-soft">
+        <div className="surface-card rounded-lg p-8">
           <p className="text-sm font-semibold uppercase tracking-wide text-ember">
             Payment failed
           </p>
@@ -25,14 +25,14 @@ export function PaymentFailedPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             {bookingId ? (
               <Link
-                className="rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink"
+                className="action-primary px-5 py-3 text-sm font-bold"
                 to={`/checkout/${bookingId}`}
               >
                 Try again
               </Link>
             ) : null}
             <Link
-              className="rounded-lg border border-ink/15 px-5 py-3 text-sm font-bold text-ink hover:border-mint hover:text-mint"
+              className="action-secondary px-5 py-3 text-sm font-bold"
               to="/user/bookings"
             >
               My bookings
