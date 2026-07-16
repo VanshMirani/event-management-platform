@@ -7,7 +7,8 @@ const adminLinks = [
   { label: "Events", to: "/admin/events" },
   { label: "Create event", to: "/admin/events/create" },
   { label: "Bookings", to: "/admin/bookings" },
-  { label: "Payments", to: "/admin/payments" }
+  { label: "Payments", to: "/admin/payments" },
+  { label: "Check-in", to: "/admin/check-in" }
 ];
 
 export function AdminNav() {

@@ -231,6 +231,14 @@ paymentDescribe("razorpay payments", () => {
 
   after(async () => {
     if (createdBookingIds.size > 0) {
+      await prisma.ticket.deleteMany({
+        where: {
+          bookingId: {
+            in: [...createdBookingIds]
+          }
+        }
+      });
+
       await prisma.payment.deleteMany({
         where: {
           bookingId: {

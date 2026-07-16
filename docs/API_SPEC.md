@@ -351,7 +351,7 @@ Responses:
 
 ### POST `/payments/razorpay/verify`
 
-Requires authentication. Verifies the Razorpay signature with `RAZORPAY_KEY_SECRET`, marks the payment `SUCCESS`, and marks the booking `CONFIRMED`. Duplicate verification with the same order/payment ids is idempotent.
+Requires authentication. Verifies the Razorpay signature with `RAZORPAY_KEY_SECRET`, marks the payment `SUCCESS`, marks the booking `CONFIRMED`, and generates QR tickets idempotently. Duplicate verification with the same order/payment ids is idempotent.
 
 Request body:
 
@@ -377,3 +377,53 @@ Responses:
 ### POST `/webhooks/razorpay`
 
 Public Razorpay webhook endpoint. Verifies `x-razorpay-signature` with `RAZORPAY_WEBHOOK_SECRET` before handling success or failure events. Success handling is idempotent.
+
+## Tickets
+
+Confirmed bookings generate one QR ticket per booked quantity. The public ticket code maps to `Ticket.ticketNumber`; QR codes contain secure random tokens whose hashes are stored server-side.
+
+### GET `/tickets/my`
+
+Requires authentication. Returns the authenticated user's tickets with event, booking, ticket type, status, ticket code, and QR image data.
+
+### GET `/tickets/:id`
+
+Requires authentication. Returns one ticket owned by the authenticated user. Tickets owned by another user return `404`.
+
+### GET `/tickets/:id/download`
+
+Requires authentication. Returns a PDF ticket download containing event details, attendee name, ticket code, status, and QR code.
+
+## Admin Check-In
+
+All check-in routes require an authenticated `ADMIN`.
+
+### POST `/admin/check-in/verify`
+
+Verifies a ticket by `ticketCode` or raw `qrToken`.
+
+Request body:
+
+```json
+{
+  "ticketCode": "TCK-example"
+}
+```
+
+or:
+
+```json
+{
+  "qrToken": "secure-token-from-qr"
+}
+```
+
+Responses:
+
+- `200` ticket found and returned
+- `403` normal users cannot access admin check-in
+- `404` ticket not found
+
+### POST `/admin/check-in/mark-used`
+
+Marks a valid ticket as `USED`. Already-used tickets return `409`; cancelled or refunded tickets return `400`.

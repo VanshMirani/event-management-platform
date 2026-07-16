@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminCategoriesPage } from "../pages/AdminCategoriesPage.jsx";
 import { AdminBookingDetailPage } from "../pages/AdminBookingDetailPage.jsx";
 import { AdminBookingsPage } from "../pages/AdminBookingsPage.jsx";
+import { AdminCheckInPage } from "../pages/AdminCheckInPage.jsx";
 import { AdminDashboardPage } from "../pages/AdminDashboardPage.jsx";
 import { AdminEventCreatePage } from "../pages/AdminEventCreatePage.jsx";
 import { AdminEventEditPage } from "../pages/AdminEventEditPage.jsx";
@@ -19,6 +20,8 @@ import { PaymentSuccessPage } from "../pages/PaymentSuccessPage.jsx";
 import { RegisterPage } from "../pages/RegisterPage.jsx";
 import { UserBookingsPage } from "../pages/UserBookingsPage.jsx";
 import { UserDashboardPage } from "../pages/UserDashboardPage.jsx";
+import { UserTicketDetailPage } from "../pages/UserTicketDetailPage.jsx";
+import { UserTicketsPage } from "../pages/UserTicketsPage.jsx";
 import { AdminRoute } from "./AdminRoute.jsx";
 import { ProtectedRoute } from "./ProtectedRoute.jsx";
 
@@ -43,6 +46,22 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <UserBookingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/user/tickets"
+        element={
+          <ProtectedRoute>
+            <UserTicketsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/user/tickets/:id"
+        element={
+          <ProtectedRoute>
+            <UserTicketDetailPage />
           </ProtectedRoute>
         }
       />
@@ -147,6 +166,14 @@ export function AppRoutes() {
         element={
           <AdminRoute>
             <AdminPaymentDetailPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/check-in"
+        element={
+          <AdminRoute>
+            <AdminCheckInPage />
           </AdminRoute>
         }
       />

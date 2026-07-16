@@ -32,6 +32,12 @@ export function PaymentSuccessPage() {
             ) : null}
             <Link
               className="rounded-lg border border-ink/15 px-5 py-3 text-sm font-bold text-ink hover:border-mint hover:text-mint"
+              to="/user/tickets"
+            >
+              My tickets
+            </Link>
+            <Link
+              className="rounded-lg border border-ink/15 px-5 py-3 text-sm font-bold text-ink hover:border-mint hover:text-mint"
               to="/user/bookings"
             >
               My bookings

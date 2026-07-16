@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { env } from "../config/env.js";
 import { prisma } from "../config/db.js";
+import { generateTicketsForBooking } from "./ticket.service.js";
 import { createHttpError } from "../utils/httpError.js";
 import {
   createRazorpayOrder,
@@ -149,6 +150,7 @@ async function confirmBookingPayment(
   ensurePaymentMatches(booking.payment, orderId, paymentId);
 
   if (booking.payment.status === "SUCCESS") {
+    await generateTicketsForBooking(booking.id, tx);
     return toPaymentBookingResponse(booking);
   }
 
@@ -182,6 +184,8 @@ async function confirmBookingPayment(
     },
     select: BOOKING_PAYMENT_SELECT
   });
+
+  await generateTicketsForBooking(updatedBooking.id, tx);
 
   return toPaymentBookingResponse(updatedBooking);
 }

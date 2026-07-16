@@ -119,3 +119,13 @@ export async function getAdminPayment(paymentId) {
   const response = await apiGet(`/admin/payments/${paymentId}`);
   return response.data.payment;
 }
+
+export async function verifyAdminTicket(data) {
+  const response = await apiPost("/admin/check-in/verify", data);
+  return response.data.ticket;
+}
+
+export async function markAdminTicketUsed(data) {
+  const response = await apiPost("/admin/check-in/mark-used", data);
+  return response.data.ticket;
+}

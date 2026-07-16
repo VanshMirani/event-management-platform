@@ -140,10 +140,15 @@ Auth routes:
 - `/payment-success` - protected payment confirmation page
 - `/payment-failed` - protected payment failure page
 - `/user/bookings` - protected list of the user's bookings
+- `/user/tickets` - protected QR ticket list
+- `/user/tickets/:id` - protected QR ticket detail and PDF download
+- `/admin/check-in` - admin-only ticket verification and check-in
 
 Admin APIs are available under `/api/admin/*` for dashboard stats, users, categories, events, ticket types, bookings, and payments. Public category discovery is available at `/api/categories`; public published events are available at `/api/events`, `/api/events/featured`, and `/api/events/:slug`.
 
 Authenticated users can create pending bookings with `POST /api/bookings`, list their bookings with `GET /api/bookings/my`, and view their own booking details with `GET /api/bookings/:id`. Booking totals are calculated by the backend from `TicketType.price`; Razorpay checkout creates orders through the backend and confirms bookings only after server-side signature verification.
+
+Confirmed bookings generate QR tickets. Users can view tickets with `GET /api/tickets/my`, view one ticket with `GET /api/tickets/:id`, and download a PDF from `GET /api/tickets/:id/download`. Admins can verify and check in tickets with `/api/admin/check-in/verify` and `/api/admin/check-in/mark-used`.
 
 Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` in `server/.env`. Only the key id is safe for frontend use.
 

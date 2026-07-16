@@ -12,6 +12,8 @@
 
 - `/user/dashboard` - requires an authenticated user and shows the current user's name and email
 - `/user/bookings` - requires an authenticated user and lists their bookings
+- `/user/tickets` - requires an authenticated user and lists QR tickets
+- `/user/tickets/:id` - requires an authenticated user and shows QR ticket detail/download
 - `/checkout/:bookingId` - requires an authenticated user and starts Razorpay checkout for pending bookings
 - `/payment-success` - requires an authenticated user and shows successful payment confirmation
 - `/payment-failed` - requires an authenticated user and shows payment failure details
@@ -25,6 +27,7 @@
 - `/admin/bookings/:id` - admin-only booking detail view
 - `/admin/payments` - admin-only live payment table with status/provider/search filters
 - `/admin/payments/:id` - admin-only payment detail view
+- `/admin/check-in` - admin-only ticket verification and check-in tool
 
 ## Auth Behavior
 
@@ -42,4 +45,5 @@
 - Category management shows backend validation errors such as duplicate names or categories still used by events.
 - Event management loads categories for the event form, sends cookie-authenticated admin requests, and redirects back to `/admin/events` after create or update.
 - Admin bookings and payments pages use paginated backend data and never depend on frontend-trusted role, amount, or payment status.
+- Admin check-in verifies tickets by code or QR token and blocks duplicate check-ins.
 - Public event cards link to `/events/:slug`; event details let authenticated users create pending bookings and pay from checkout.

@@ -27,9 +27,14 @@ export function AppLayout({ children }) {
               Operations
             </a>
             {currentUser ? (
-              <Link className="hover:text-ember" to="/user/bookings">
-                Bookings
-              </Link>
+              <>
+                <Link className="hover:text-ember" to="/user/bookings">
+                  Bookings
+                </Link>
+                <Link className="hover:text-ember" to="/user/tickets">
+                  Tickets
+                </Link>
+              </>
             ) : (
               <a className="hover:text-ember" href="/#bookings">
                 Bookings

@@ -46,8 +46,14 @@ export function UserDashboardPage() {
             </p>
             <p className="mt-2 text-lg font-bold text-ink">Ready for QR tickets</p>
             <p className="mt-2 text-sm leading-6 text-ink/65">
-              Ticket delivery will connect here once booking checkout is active.
+              Confirmed bookings generate QR tickets for event entry.
             </p>
+            <Link
+              className="mt-4 inline-flex rounded-lg border border-ink/15 px-4 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
+              to="/user/tickets"
+            >
+              View tickets
+            </Link>
           </div>
 
           <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">

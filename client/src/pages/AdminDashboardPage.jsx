@@ -50,6 +50,13 @@ const dashboardCards = [
     status: "Live",
     body: "Monitor Razorpay orders, captures, and payment status.",
     to: "/admin/payments"
+  },
+  {
+    id: "check-in",
+    title: "Check-in",
+    status: "Live",
+    body: "Verify QR tickets and mark attendees as checked in.",
+    to: "/admin/check-in"
   }
 ];
 

@@ -31,6 +31,10 @@ import {
   postAdminTicketType,
   removeAdminTicketType
 } from "../controllers/ticketTypes.controller.js";
+import {
+  markTicketUsed,
+  verifyTicketForCheckIn
+} from "../controllers/tickets.controller.js";
 import { adminMiddleware } from "../middlewares/admin.middleware.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { validateRequest } from "../middlewares/validateRequest.js";
@@ -58,6 +62,7 @@ import {
   ticketTypeParamsSchema,
   updateTicketTypeSchema
 } from "../validators/ticketType.validator.js";
+import { checkInLookupSchema } from "../validators/ticket.validator.js";
 
 const router = Router();
 
@@ -100,5 +105,15 @@ router.get("/bookings", validateRequest(adminBookingListQuerySchema), getBooking
 router.get("/bookings/:id", validateRequest(adminBookingParamsSchema), getBookingById);
 router.get("/payments", validateRequest(adminPaymentListQuerySchema), getPayments);
 router.get("/payments/:id", validateRequest(adminPaymentParamsSchema), getPaymentById);
+router.post(
+  "/check-in/verify",
+  validateRequest(checkInLookupSchema),
+  verifyTicketForCheckIn
+);
+router.post(
+  "/check-in/mark-used",
+  validateRequest(checkInLookupSchema),
+  markTicketUsed
+);
 
 export default router;
