@@ -226,13 +226,6 @@ async function reserveTicketQuantity(tx, { eventId, ticketTypeId, quantity, now 
   }
 }
 
-export function getBookingRoadmap() {
-  return {
-    implemented: true,
-    flow: ["create pending booking", "reserve ticket quantity", "payment integration later"]
-  };
-}
-
 export async function createPendingBooking(input, userId) {
   return prisma.$transaction(async (tx) => {
     await getBookableEvent(tx, input.eventId);

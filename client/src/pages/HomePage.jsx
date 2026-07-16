@@ -53,10 +53,10 @@ export function HomePage() {
         >
           <div className="flex h-full min-h-[360px] flex-col justify-end p-6 text-white">
             <p className="text-sm font-semibold uppercase tracking-wide text-white/75">
-              Next launch
+              Live workspace
             </p>
             <p className="mt-2 max-w-sm text-3xl font-bold tracking-normal">
-              Conference operations dashboard
+              Conference operations from discovery to check-in
             </p>
           </div>
         </div>
@@ -86,15 +86,15 @@ export function HomePage() {
               Booking pipeline
             </p>
             <h2 className="mt-2 text-2xl font-bold tracking-normal">
-              Ready for ticket inventory, checkout, and admin review.
+              Ticket inventory, checkout, QR tickets, and admin review are wired together.
             </h2>
           </div>
-          <a
+          <Link
             className="inline-flex justify-center rounded-lg bg-white px-5 py-3 text-sm font-bold text-ink hover:bg-linen"
-            href="http://localhost:5000/api/health"
+            to="/events"
           >
-            API health
-          </a>
+            Browse events
+          </Link>
         </div>
       </section>
     </AppLayout>

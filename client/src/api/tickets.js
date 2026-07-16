@@ -16,7 +16,9 @@ export async function downloadTicketPdf(ticketId) {
   });
 
   if (!response.ok) {
-    throw new Error(`Ticket download failed with status ${response.status}`);
+    const contentType = response.headers.get("content-type") ?? "";
+    const payload = contentType.includes("application/json") ? await response.json() : null;
+    throw new Error(payload?.message ?? `Ticket download failed with status ${response.status}`);
   }
 
   return response.blob();

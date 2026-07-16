@@ -21,7 +21,16 @@ export function getAdminStatus(_req, res) {
     res,
     {
       implemented: true,
-      modules: ["users", "categories", "events", "bookings", "payments"]
+      modules: [
+        "users",
+        "categories",
+        "events",
+        "ticketTypes",
+        "bookings",
+        "payments",
+        "tickets",
+        "checkIn"
+      ]
     },
     "Admin module ready"
   );

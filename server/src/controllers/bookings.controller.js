@@ -1,14 +1,9 @@
 import {
   createPendingBooking,
-  getBookingRoadmap,
   getUserBooking,
   listUserBookings
 } from "../services/booking.service.js";
 import { sendSuccess } from "../utils/apiResponse.js";
-
-export function getBookingStatus(_req, res) {
-  return sendSuccess(res, getBookingRoadmap(), "Bookings module available");
-}
 
 export async function postBooking(req, res, next) {
   try {

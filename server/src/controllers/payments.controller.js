@@ -1,13 +1,8 @@
 import {
   createRazorpayOrderForBooking,
-  getPaymentRoadmap,
   verifyRazorpayPayment
 } from "../services/payment.service.js";
 import { sendSuccess } from "../utils/apiResponse.js";
-
-export function getPaymentStatus(_req, res) {
-  return sendSuccess(res, getPaymentRoadmap(), "Payments module available");
-}
 
 export async function postRazorpayOrder(req, res, next) {
   try {

@@ -28,9 +28,9 @@ export function UserDashboardPage() {
             <p className="text-sm font-semibold uppercase tracking-wide text-mint">
               Bookings
             </p>
-            <p className="mt-2 text-lg font-bold text-ink">No bookings yet</p>
+            <p className="mt-2 text-lg font-bold text-ink">Your bookings</p>
             <p className="mt-2 text-sm leading-6 text-ink/65">
-              Confirmed tickets and upcoming event details will appear here.
+              Review pending and confirmed reservations in one place.
             </p>
             <Link
               className="mt-4 inline-flex rounded-lg border border-ink/15 px-4 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
@@ -44,7 +44,7 @@ export function UserDashboardPage() {
             <p className="text-sm font-semibold uppercase tracking-wide text-mint">
               Tickets
             </p>
-            <p className="mt-2 text-lg font-bold text-ink">Ready for QR tickets</p>
+            <p className="mt-2 text-lg font-bold text-ink">QR tickets</p>
             <p className="mt-2 text-sm leading-6 text-ink/65">
               Confirmed bookings generate QR tickets for event entry.
             </p>
@@ -63,7 +63,7 @@ export function UserDashboardPage() {
             <p className="mt-2 text-lg font-bold text-ink">Explore featured events</p>
             <Link
               className="mt-4 inline-flex rounded-lg bg-ember px-4 py-2 text-sm font-bold text-white hover:bg-ink"
-              to="/"
+              to="/events"
             >
               Browse events
             </Link>

@@ -1,6 +1,5 @@
 import { Router } from "express";
 import {
-  getPaymentStatus,
   postRazorpayOrder,
   verifyRazorpayOrderPayment
 } from "../controllers/payments.controller.js";
@@ -13,7 +12,6 @@ import {
 
 const router = Router();
 
-router.get("/status", getPaymentStatus);
 router.post(
   "/razorpay/create-order",
   authMiddleware,

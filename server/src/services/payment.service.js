@@ -217,14 +217,6 @@ async function markWebhookPaymentFailed(tx, { orderId, paymentId, reason, rawPay
   return true;
 }
 
-export function getPaymentRoadmap() {
-  return {
-    implemented: true,
-    provider: "Razorpay",
-    flow: ["create order", "verify payment", "record payment", "confirm booking"]
-  };
-}
-
 export async function createRazorpayOrderForBooking({ bookingId, userId }) {
   const booking = await getOwnedBookingForPayment(bookingId, userId);
   const amount = amountToSmallestUnit(booking.totalAmount);

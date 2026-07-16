@@ -197,6 +197,27 @@ function toMoney(value) {
   return Number(value);
 }
 
+function isSensitivePayloadKey(key) {
+  const normalizedKey = key.toLowerCase();
+  return normalizedKey.includes("signature") || normalizedKey.includes("secret");
+}
+
+function sanitizeRawPayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+
+  if (Array.isArray(payload)) {
+    return payload.map(sanitizeRawPayload);
+  }
+
+  return Object.fromEntries(
+    Object.entries(payload)
+      .filter(([key]) => !isSensitivePayloadKey(key))
+      .map(([key, value]) => [key, sanitizeRawPayload(value)])
+  );
+}
+
 function parseDate(value) {
   if (!value) {
     return null;
@@ -371,7 +392,7 @@ function mapPaymentDetail(payment) {
     ...mapPaymentSummary(payment),
     failureReason: payment.failureReason,
     refundedAt: payment.refundedAt,
-    rawPayload: payment.rawPayload,
+    rawPayload: sanitizeRawPayload(payment.rawPayload),
     booking: payment.booking
       ? {
           id: payment.booking.id,

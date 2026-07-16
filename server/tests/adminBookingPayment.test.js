@@ -168,7 +168,12 @@ async function createPayment(booking) {
       currency: booking.currency,
       rawPayload: {
         test: true,
-        orderId: booking.bookingNumber
+        orderId: booking.bookingNumber,
+        razorpay_signature: "hidden-raw-signature",
+        nested: {
+          signature: "hidden-nested-signature",
+          safe: "visible"
+        }
       },
       paidAt: new Date()
     }
@@ -349,6 +354,9 @@ adminOperationsDescribe("admin bookings and payments", () => {
     assert.equal("passwordHash" in responsePayment.booking.user, false);
     assert.equal("providerSignature" in responsePayment, false);
     assert.equal(responsePayment.rawPayload.test, true);
+    assert.equal("razorpay_signature" in responsePayment.rawPayload, false);
+    assert.equal("signature" in responsePayment.rawPayload.nested, false);
+    assert.equal(responsePayment.rawPayload.nested.safe, "visible");
   });
 
   it("dashboard stats include booking and payment counts", async () => {

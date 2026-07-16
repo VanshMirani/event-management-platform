@@ -1,7 +1,6 @@
 import { Router } from "express";
 import {
   getBookingById,
-  getBookingStatus,
   getMyBookings,
   postBooking
 } from "../controllers/bookings.controller.js";
@@ -14,7 +13,6 @@ import {
 
 const router = Router();
 
-router.get("/status", getBookingStatus);
 router.post("/", authMiddleware, validateRequest(createBookingSchema), postBooking);
 router.get("/my", authMiddleware, getMyBookings);
 router.get("/:id", authMiddleware, validateRequest(bookingParamsSchema), getBookingById);
