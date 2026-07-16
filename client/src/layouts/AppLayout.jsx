@@ -20,9 +20,9 @@ export function AppLayout({ children }) {
             EventFlow
           </Link>
           <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-ink/70 sm:gap-6">
-            <a className="hover:text-ember" href="/#events">
+            <Link className="hover:text-ember" to="/events">
               Events
-            </a>
+            </Link>
             <a className="hover:text-ember" href="/#operations">
               Operations
             </a>

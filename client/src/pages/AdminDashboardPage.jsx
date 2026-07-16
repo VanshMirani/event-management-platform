@@ -22,9 +22,16 @@ const dashboardCards = [
   {
     id: "events",
     title: "Events",
-    status: "Next",
-    body: "Event moderation and publishing controls will live here.",
-    to: "/admin/dashboard#events"
+    status: "Live",
+    body: "Create, edit, delete, publish, and unpublish events.",
+    to: "/admin/events"
+  },
+  {
+    id: "create-event",
+    title: "Create event",
+    status: "Live",
+    body: "Open the event form and publish a new experience.",
+    to: "/admin/events/create"
   },
   {
     id: "bookings",

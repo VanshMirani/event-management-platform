@@ -126,6 +126,11 @@ Auth routes:
 - `/admin/dashboard` - admin-only dashboard
 - `/admin/users` - admin-only user management
 - `/admin/categories` - admin-only category management
+- `/admin/events` - admin-only event list with publish controls
+- `/admin/events/create` - admin-only event creation
+- `/admin/events/:id/edit` - admin-only event editing
+- `/events` - published public events
+- `/events/:slug` - public event details with a booking placeholder
 
 Admin APIs are available under `/api/admin/*` for user, category, and event management. Public category discovery is available at `/api/categories`; public published events are available at `/api/events`, `/api/events/featured`, and `/api/events/:slug`.
 

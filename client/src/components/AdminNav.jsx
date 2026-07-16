@@ -4,7 +4,8 @@ const adminLinks = [
   { label: "Dashboard", to: "/admin/dashboard" },
   { label: "Users", to: "/admin/users" },
   { label: "Categories", to: "/admin/categories" },
-  { label: "Events", to: "/admin/dashboard#events" },
+  { label: "Events", to: "/admin/events" },
+  { label: "Create event", to: "/admin/events/create" },
   { label: "Bookings", to: "/admin/dashboard#bookings" },
   { label: "Payments", to: "/admin/dashboard#payments" }
 ];
@@ -15,9 +16,7 @@ export function AdminNav() {
   return (
     <nav className="flex flex-wrap gap-2 border-b border-ink/10 pb-5">
       {adminLinks.map((link) => {
-        const isActive =
-          link.to === location.pathname ||
-          (link.to.includes("#") && location.pathname + location.hash === link.to);
+        const isActive = link.to === location.pathname;
 
         return (
           <Link

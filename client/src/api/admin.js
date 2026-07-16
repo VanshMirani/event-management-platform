@@ -28,3 +28,37 @@ export async function updateAdminCategory(categoryId, data) {
 export async function deleteAdminCategory(categoryId) {
   await apiDelete(`/admin/categories/${categoryId}`);
 }
+
+export async function listAdminEvents() {
+  const response = await apiGet("/admin/events");
+  return response.data.events;
+}
+
+export async function getAdminEvent(eventId) {
+  const response = await apiGet(`/admin/events/${eventId}`);
+  return response.data.event;
+}
+
+export async function createAdminEvent(data) {
+  const response = await apiPost("/admin/events", data);
+  return response.data.event;
+}
+
+export async function updateAdminEvent(eventId, data) {
+  const response = await apiPatch(`/admin/events/${eventId}`, data);
+  return response.data.event;
+}
+
+export async function deleteAdminEvent(eventId) {
+  await apiDelete(`/admin/events/${eventId}`);
+}
+
+export async function publishAdminEvent(eventId) {
+  const response = await apiPatch(`/admin/events/${eventId}/publish`);
+  return response.data.event;
+}
+
+export async function unpublishAdminEvent(eventId) {
+  const response = await apiPatch(`/admin/events/${eventId}/unpublish`);
+  return response.data.event;
+}

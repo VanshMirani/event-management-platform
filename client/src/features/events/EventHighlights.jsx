@@ -1,36 +1,30 @@
-import { formatCurrency } from "../../utils/formatCurrency.js";
-
-const events = [
-  {
-    id: "tech-summit",
-    title: "Tech Leaders Summit",
-    city: "Bengaluru",
-    date: "Aug 14",
-    price: 2499,
-    image:
-      "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=900&q=80"
-  },
-  {
-    id: "founders-night",
-    title: "Founders Night",
-    city: "Mumbai",
-    date: "Sep 02",
-    price: 1499,
-    image:
-      "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=900&q=80"
-  },
-  {
-    id: "design-weekend",
-    title: "Design Weekend",
-    city: "Delhi",
-    date: "Sep 21",
-    price: 999,
-    image:
-      "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=900&q=80"
-  }
-];
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { listFeaturedEvents } from "../../api/events.js";
+import { EventCard } from "../../components/EventCard.jsx";
 
 export function EventHighlights() {
+  const [events, setEvents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadFeaturedEvents() {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        setEvents(await listFeaturedEvents());
+      } catch (loadError) {
+        setError(loadError.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadFeaturedEvents();
+  }, []);
+
   return (
     <section id="events" className="mx-auto w-full max-w-6xl px-5 py-12">
       <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
@@ -42,38 +36,30 @@ export function EventHighlights() {
             Upcoming experiences
           </h2>
         </div>
-        <a className="text-sm font-semibold text-ember hover:text-ink" href="/">
+        <Link className="text-sm font-semibold text-ember hover:text-ink" to="/events">
           View all
-        </a>
+        </Link>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-3">
-        {events.map((event) => (
-          <article
-            className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm"
-            key={event.id}
-          >
-            <img
-              alt=""
-              className="h-44 w-full object-cover"
-              loading="lazy"
-              src={event.image}
-            />
-            <div className="p-5">
-              <div className="flex items-center justify-between gap-3 text-sm text-ink/60">
-                <span>{event.city}</span>
-                <span>{event.date}</span>
-              </div>
-              <h3 className="mt-3 text-xl font-bold tracking-normal text-ink">
-                {event.title}
-              </h3>
-              <p className="mt-4 text-sm font-semibold text-mint">
-                From {formatCurrency(event.price)}
-              </p>
-            </div>
-          </article>
-        ))}
-      </div>
+      {isLoading ? (
+        <p className="rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+          Loading featured events...
+        </p>
+      ) : error ? (
+        <p className="rounded-lg border border-ember/20 bg-ember/10 p-5 text-sm font-semibold text-ember">
+          {error}
+        </p>
+      ) : events.length === 0 ? (
+        <p className="rounded-lg border border-ink/10 bg-white p-5 text-sm font-semibold text-ink/60">
+          No featured events are published yet.
+        </p>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-3">
+          {events.map((event) => (
+            <EventCard event={event} key={event.id} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

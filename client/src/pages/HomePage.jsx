@@ -2,6 +2,7 @@ import { FeaturePill } from "../components/FeaturePill.jsx";
 import { EventHighlights } from "../features/events/EventHighlights.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
+import { Link } from "react-router-dom";
 
 const metrics = [
   { label: "Live events", value: "42" },
@@ -27,12 +28,12 @@ export function HomePage() {
             operations, secure cookies, and Razorpay payments.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a
+            <Link
               className="rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white shadow-soft hover:bg-ink"
-              href="#events"
+              to="/events"
             >
               Explore events
-            </a>
+            </Link>
             <a
               className="rounded-lg border border-ink/15 bg-white px-5 py-3 text-sm font-bold text-ink hover:border-mint hover:text-mint"
               href="#operations"

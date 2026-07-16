@@ -1,7 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminCategoriesPage } from "../pages/AdminCategoriesPage.jsx";
 import { AdminDashboardPage } from "../pages/AdminDashboardPage.jsx";
+import { AdminEventCreatePage } from "../pages/AdminEventCreatePage.jsx";
+import { AdminEventEditPage } from "../pages/AdminEventEditPage.jsx";
+import { AdminEventsPage } from "../pages/AdminEventsPage.jsx";
 import { AdminUsersPage } from "../pages/AdminUsersPage.jsx";
+import { EventDetailPage } from "../pages/EventDetailPage.jsx";
+import { EventsPage } from "../pages/EventsPage.jsx";
 import { HomePage } from "../pages/HomePage.jsx";
 import { LoginPage } from "../pages/LoginPage.jsx";
 import { RegisterPage } from "../pages/RegisterPage.jsx";
@@ -13,6 +18,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/events" element={<EventsPage />} />
+      <Route path="/events/:slug" element={<EventDetailPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route
@@ -44,6 +51,30 @@ export function AppRoutes() {
         element={
           <AdminRoute>
             <AdminCategoriesPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/events"
+        element={
+          <AdminRoute>
+            <AdminEventsPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/events/create"
+        element={
+          <AdminRoute>
+            <AdminEventCreatePage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/events/:id/edit"
+        element={
+          <AdminRoute>
+            <AdminEventEditPage />
           </AdminRoute>
         }
       />
