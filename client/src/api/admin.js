@@ -62,3 +62,22 @@ export async function unpublishAdminEvent(eventId) {
   const response = await apiPatch(`/admin/events/${eventId}/unpublish`);
   return response.data.event;
 }
+
+export async function listAdminEventTicketTypes(eventId) {
+  const response = await apiGet(`/admin/events/${eventId}/ticket-types`);
+  return response.data.ticketTypes;
+}
+
+export async function createAdminTicketType(data) {
+  const response = await apiPost("/admin/ticket-types", data);
+  return response.data.ticketType;
+}
+
+export async function updateAdminTicketType(ticketTypeId, data) {
+  const response = await apiPatch(`/admin/ticket-types/${ticketTypeId}`, data);
+  return response.data.ticketType;
+}
+
+export async function deleteAdminTicketType(ticketTypeId) {
+  await apiDelete(`/admin/ticket-types/${ticketTypeId}`);
+}

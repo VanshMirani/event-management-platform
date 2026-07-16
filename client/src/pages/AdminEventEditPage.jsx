@@ -8,6 +8,7 @@ import {
 } from "../api/admin.js";
 import { AdminEventForm } from "../components/AdminEventForm.jsx";
 import { AdminNav } from "../components/AdminNav.jsx";
+import { AdminTicketTypesSection } from "../components/AdminTicketTypesSection.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 
@@ -118,15 +119,18 @@ export function AdminEventEditPage() {
             {error}
           </p>
         ) : (
-          <div className="mt-6">
-            <AdminEventForm
-              error={actionError}
-              initialEvent={event}
-              isSaving={isSaving}
-              onSubmit={handleSubmit}
-              submitLabel="Save changes"
-            />
-          </div>
+          <>
+            <div className="mt-6">
+              <AdminEventForm
+                error={actionError}
+                initialEvent={event}
+                isSaving={isSaving}
+                onSubmit={handleSubmit}
+                submitLabel="Save changes"
+              />
+            </div>
+            <AdminTicketTypesSection eventId={event.id} />
+          </>
         )}
       </section>
     </AppLayout>
