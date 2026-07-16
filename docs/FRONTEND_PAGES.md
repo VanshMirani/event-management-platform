@@ -4,13 +4,17 @@
 
 - `/` - marketing and event discovery home page
 - `/events` - published event listing
-- `/events/:slug` - published event detail with a Book Now placeholder
+- `/events/:slug` - published event detail with ticket selection, quantity, estimated total, and booking creation
 - `/login` - email/password sign-in form
 - `/register` - account creation form with optional phone field
 
 ## Protected
 
 - `/user/dashboard` - requires an authenticated user and shows the current user's name and email
+- `/user/bookings` - requires an authenticated user and lists their bookings
+- `/checkout/:bookingId` - requires an authenticated user and starts Razorpay checkout for pending bookings
+- `/payment-success` - requires an authenticated user and shows successful payment confirmation
+- `/payment-failed` - requires an authenticated user and shows payment failure details
 - `/admin/dashboard` - requires an authenticated user with role `ADMIN`
 - `/admin/users` - admin-only user table with block and unblock actions
 - `/admin/categories` - admin-only category list with create, edit, and delete actions
@@ -33,4 +37,4 @@
 - User management never displays `passwordHash`.
 - Category management shows backend validation errors such as duplicate names or categories still used by events.
 - Event management loads categories for the event form, sends cookie-authenticated admin requests, and redirects back to `/admin/events` after create or update.
-- Public event cards link to `/events/:slug`; event details currently show a Book Now placeholder.
+- Public event cards link to `/events/:slug`; event details let authenticated users create pending bookings and pay from checkout.

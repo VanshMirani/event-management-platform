@@ -1,20 +1,71 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { createBooking } from "../api/bookings.js";
 import { getPublicEvent, listPublicEventTicketTypes } from "../api/events.js";
-import { formatCurrency } from "../utils/formatCurrency.js";
-import { formatDateTime } from "../utils/formatDate.js";
+import { useAuth } from "../features/auth/index.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
+import { formatCurrency } from "../utils/formatCurrency.js";
+import { formatDateTime } from "../utils/formatDate.js";
 
 const fallbackImage =
   "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80";
 
+function getTicketLimit(ticketType) {
+  if (!ticketType) {
+    return 0;
+  }
+
+  return Math.min(ticketType.availableQuantity, ticketType.maxPerUser);
+}
+
+function validateBookingSelection(ticketType, quantity) {
+  if (!ticketType) {
+    return "Select a ticket type.";
+  }
+
+  if (ticketType.availableQuantity <= 0) {
+    return "This ticket type is sold out.";
+  }
+
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return "Choose a valid quantity.";
+  }
+
+  if (quantity > ticketType.maxPerUser) {
+    return `You can book up to ${ticketType.maxPerUser} tickets per user.`;
+  }
+
+  if (quantity > ticketType.availableQuantity) {
+    return "That quantity is not available.";
+  }
+
+  return "";
+}
+
 export function EventDetailPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, isCheckingAuth } = useAuth();
   const [event, setEvent] = useState(null);
   const [ticketTypes, setTicketTypes] = useState([]);
+  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [isLoading, setIsLoading] = useState(true);
+  const [isBooking, setIsBooking] = useState(false);
   const [error, setError] = useState("");
+  const [bookingError, setBookingError] = useState("");
+
+  const selectedTicketType = useMemo(
+    () => ticketTypes.find((ticketType) => ticketType.id === selectedTicketTypeId) ?? null,
+    [selectedTicketTypeId, ticketTypes]
+  );
+  const numericQuantity = Number(quantity);
+  const ticketLimit = getTicketLimit(selectedTicketType);
+  const estimatedTotal = selectedTicketType
+    ? selectedTicketType.price * (Number.isFinite(numericQuantity) ? numericQuantity : 0)
+    : 0;
 
   useDocumentTitle(event ? `${event.title} | EventFlow` : "Event | EventFlow");
 
@@ -22,6 +73,7 @@ export function EventDetailPage() {
     async function loadEvent() {
       setIsLoading(true);
       setError("");
+      setBookingError("");
 
       try {
         const [eventData, ticketTypeData] = await Promise.all([
@@ -30,6 +82,8 @@ export function EventDetailPage() {
         ]);
         setEvent(eventData);
         setTicketTypes(ticketTypeData);
+        setSelectedTicketTypeId(ticketTypeData[0]?.id ?? "");
+        setQuantity(ticketTypeData[0]?.availableQuantity > 0 ? "1" : "0");
       } catch (loadError) {
         setError(loadError.message);
       } finally {
@@ -39,6 +93,54 @@ export function EventDetailPage() {
 
     loadEvent();
   }, [slug]);
+
+  function selectTicketType(ticketTypeId) {
+    const nextTicketType = ticketTypes.find((ticketType) => ticketType.id === ticketTypeId);
+    const nextLimit = getTicketLimit(nextTicketType);
+
+    setSelectedTicketTypeId(ticketTypeId);
+    setQuantity(nextLimit > 0 ? "1" : "0");
+    setBookingError("");
+  }
+
+  function updateQuantity(inputEvent) {
+    setQuantity(inputEvent.target.value);
+    setBookingError("");
+  }
+
+  async function handleBooking() {
+    const validationError = validateBookingSelection(selectedTicketType, numericQuantity);
+
+    if (validationError) {
+      setBookingError(validationError);
+      return;
+    }
+
+    if (!isAuthenticated) {
+      navigate("/login", {
+        state: {
+          from: location
+        }
+      });
+      return;
+    }
+
+    setIsBooking(true);
+    setBookingError("");
+
+    try {
+      const booking = await createBooking({
+        eventId: event.id,
+        ticketTypeId: selectedTicketType.id,
+        quantity: numericQuantity
+      });
+      navigate(`/checkout/${booking.id}`);
+    } catch (submitError) {
+      setBookingError(submitError.message);
+    } finally {
+      setIsBooking(false);
+    }
+  }
 
   return (
     <AppLayout>
@@ -68,7 +170,7 @@ export function EventDetailPage() {
             src={event.bannerImage || fallbackImage}
           />
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
+          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide text-mint">
                 {event.category?.name ?? event.eventType}
@@ -90,30 +192,40 @@ export function EventDetailPage() {
                   </p>
                 ) : (
                   <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    {ticketTypes.map((ticketType) => (
-                      <div
-                        className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm"
-                        key={ticketType.id}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="text-lg font-bold text-ink">{ticketType.name}</p>
-                            {ticketType.description ? (
-                              <p className="mt-2 text-sm leading-6 text-ink/65">
-                                {ticketType.description}
-                              </p>
-                            ) : null}
+                    {ticketTypes.map((ticketType) => {
+                      const isSelected = ticketType.id === selectedTicketTypeId;
+
+                      return (
+                        <button
+                          className={`rounded-lg border bg-white p-5 text-left shadow-sm transition ${
+                            isSelected
+                              ? "border-mint ring-2 ring-mint/15"
+                              : "border-ink/10 hover:border-mint"
+                          }`}
+                          key={ticketType.id}
+                          onClick={() => selectTicketType(ticketType.id)}
+                          type="button"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="text-lg font-bold text-ink">{ticketType.name}</p>
+                              {ticketType.description ? (
+                                <p className="mt-2 text-sm leading-6 text-ink/65">
+                                  {ticketType.description}
+                                </p>
+                              ) : null}
+                            </div>
+                            <p className="rounded-lg bg-mint/10 px-3 py-1 text-sm font-bold text-mint">
+                              {formatCurrency(ticketType.price, ticketType.currency)}
+                            </p>
                           </div>
-                          <p className="rounded-lg bg-mint/10 px-3 py-1 text-sm font-bold text-mint">
-                            {formatCurrency(ticketType.price, ticketType.currency)}
+                          <p className="mt-4 text-sm font-semibold text-ink/65">
+                            {ticketType.availableQuantity} available - Max{" "}
+                            {ticketType.maxPerUser} per user
                           </p>
-                        </div>
-                        <p className="mt-4 text-sm font-semibold text-ink/65">
-                          {ticketType.availableQuantity} available - Max {ticketType.maxPerUser} per
-                          user
-                        </p>
-                      </div>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -133,15 +245,89 @@ export function EventDetailPage() {
                   event.onlineUrl ||
                   "To be announced"}
               </p>
-              <button
-                className="mt-6 w-full rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink"
-                type="button"
-              >
-                Book Now
-              </button>
-              <p className="mt-3 text-xs font-semibold text-ink/50">
-                Booking will be connected in the next checkout step.
-              </p>
+
+              <div className="mt-6 border-t border-ink/10 pt-5">
+                <p className="text-sm font-semibold uppercase tracking-wide text-mint">
+                  Booking
+                </p>
+                {ticketTypes.length === 0 ? (
+                  <p className="mt-3 text-sm font-semibold text-ink/55">
+                    Booking opens after tickets are added.
+                  </p>
+                ) : (
+                  <>
+                    <label className="mt-4 block text-sm font-bold text-ink" htmlFor="ticketType">
+                      Ticket type
+                    </label>
+                    <select
+                      className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+                      id="ticketType"
+                      onChange={(selectEvent) => selectTicketType(selectEvent.target.value)}
+                      value={selectedTicketTypeId}
+                    >
+                      {ticketTypes.map((ticketType) => (
+                        <option key={ticketType.id} value={ticketType.id}>
+                          {ticketType.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <label className="mt-4 block text-sm font-bold text-ink" htmlFor="quantity">
+                      Quantity
+                    </label>
+                    <input
+                      className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+                      id="quantity"
+                      max={ticketLimit || 1}
+                      min="1"
+                      onChange={updateQuantity}
+                      type="number"
+                      value={quantity}
+                    />
+
+                    <div className="mt-5 rounded-lg bg-linen p-4">
+                      <div className="flex items-center justify-between gap-4 text-sm">
+                        <span className="font-semibold text-ink/65">Estimated total</span>
+                        <span className="text-lg font-extrabold text-ink">
+                          {formatCurrency(
+                            estimatedTotal,
+                            selectedTicketType?.currency ?? "INR"
+                          )}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-ink/45">
+                        Final amount is calculated by the backend.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {bookingError ? (
+                  <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember">
+                    {bookingError}
+                  </p>
+                ) : null}
+
+                <button
+                  className="mt-5 w-full rounded-lg bg-ember px-5 py-3 text-sm font-bold text-white hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink/40"
+                  disabled={
+                    isBooking ||
+                    isCheckingAuth ||
+                    ticketTypes.length === 0 ||
+                    !selectedTicketType ||
+                    ticketLimit <= 0
+                  }
+                  onClick={handleBooking}
+                  type="button"
+                >
+                  {isBooking ? "Creating booking..." : "Book Now"}
+                </button>
+                {!isAuthenticated ? (
+                  <p className="mt-3 text-xs font-semibold text-ink/50">
+                    You will be asked to sign in before checkout.
+                  </p>
+                ) : null}
+              </div>
             </aside>
           </div>
         </section>

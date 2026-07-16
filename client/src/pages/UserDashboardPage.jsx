@@ -32,6 +32,12 @@ export function UserDashboardPage() {
             <p className="mt-2 text-sm leading-6 text-ink/65">
               Confirmed tickets and upcoming event details will appear here.
             </p>
+            <Link
+              className="mt-4 inline-flex rounded-lg border border-ink/15 px-4 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
+              to="/user/bookings"
+            >
+              View bookings
+            </Link>
           </div>
 
           <div className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm">

@@ -18,7 +18,15 @@ app.use(
     credentials: true
   })
 );
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, _res, buffer) => {
+      if (req.originalUrl === "/api/webhooks/razorpay") {
+        req.rawBody = buffer;
+      }
+    }
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 

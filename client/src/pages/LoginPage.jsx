@@ -13,6 +13,17 @@ function getDashboardPath(user) {
   return user?.role === "ADMIN" ? "/admin/dashboard" : "/user/dashboard";
 }
 
+function getReturnPath(location, user) {
+  const from = location.state?.from;
+  const pathname = from?.pathname;
+
+  if (!pathname || pathname === "/login") {
+    return getDashboardPath(user);
+  }
+
+  return `${pathname}${from.search ?? ""}${from.hash ?? ""}`;
+}
+
 function validateLoginForm(form) {
   if (!form.email.trim()) {
     return "Email is required.";
@@ -65,7 +76,7 @@ export function LoginPage() {
         email: form.email,
         password: form.password
       });
-      navigate(getDashboardPath(user), {
+      navigate(getReturnPath(location, user), {
         replace: true
       });
     } catch (submitError) {

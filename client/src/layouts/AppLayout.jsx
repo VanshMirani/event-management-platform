@@ -26,9 +26,15 @@ export function AppLayout({ children }) {
             <a className="hover:text-ember" href="/#operations">
               Operations
             </a>
-            <a className="hover:text-ember" href="/#bookings">
-              Bookings
-            </a>
+            {currentUser ? (
+              <Link className="hover:text-ember" to="/user/bookings">
+                Bookings
+              </Link>
+            ) : (
+              <a className="hover:text-ember" href="/#bookings">
+                Bookings
+              </a>
+            )}
             {isCheckingAuth ? (
               <span className="text-ink/45">Checking...</span>
             ) : currentUser ? (

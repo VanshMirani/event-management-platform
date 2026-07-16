@@ -6,6 +6,7 @@ import categoryRoutes from "./categories.routes.js";
 import eventRoutes from "./events.routes.js";
 import healthRoutes from "./health.routes.js";
 import paymentRoutes from "./payments.routes.js";
+import webhookRoutes from "./webhooks.routes.js";
 
 const router = Router();
 
@@ -15,6 +16,7 @@ router.use("/categories", categoryRoutes);
 router.use("/events", eventRoutes);
 router.use("/bookings", bookingRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/webhooks", webhookRoutes);
 router.use("/admin", adminRoutes);
 
 export default router;

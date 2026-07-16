@@ -283,3 +283,55 @@ Returns the authenticated user's bookings.
 ### GET `/bookings/:id`
 
 Returns one booking owned by the authenticated user. Missing bookings and bookings owned by another user return `404`.
+
+## Payments
+
+Payment routes use Razorpay test mode. The backend never trusts frontend amounts or payment success; it creates orders from server-side booking totals and confirms bookings only after verifying Razorpay signatures.
+
+### POST `/payments/razorpay/create-order`
+
+Requires authentication. Creates a Razorpay order for the authenticated user's own `PENDING` booking and creates or updates the local `Payment` record.
+
+Request body:
+
+```json
+{
+  "bookingId": "booking_id"
+}
+```
+
+Responses:
+
+- `201` Razorpay order created
+- `400` booking is not pending
+- `401` authentication required
+- `404` booking not found for the current user
+
+### POST `/payments/razorpay/verify`
+
+Requires authentication. Verifies the Razorpay signature with `RAZORPAY_KEY_SECRET`, marks the payment `SUCCESS`, and marks the booking `CONFIRMED`. Duplicate verification with the same order/payment ids is idempotent.
+
+Request body:
+
+```json
+{
+  "bookingId": "booking_id",
+  "razorpay_order_id": "order_id",
+  "razorpay_payment_id": "payment_id",
+  "razorpay_signature": "signature"
+}
+```
+
+Responses:
+
+- `200` payment verified and booking confirmed
+- `400` invalid signature or mismatched payment order
+- `401` authentication required
+- `404` booking not found for the current user
+- `409` booking was already confirmed with another payment
+
+## Webhooks
+
+### POST `/webhooks/razorpay`
+
+Public Razorpay webhook endpoint. Verifies `x-razorpay-signature` with `RAZORPAY_WEBHOOK_SECRET` before handling success or failure events. Success handling is idempotent.

@@ -8,7 +8,7 @@ JavaScript-only full-stack monorepo for an event management platform.
 - Backend: Node.js, Express.js, JavaScript
 - Database: PostgreSQL with Prisma
 - Authentication: JWT access and refresh tokens in httpOnly cookies
-- Planned payments: Razorpay
+- Payments: Razorpay test mode
 
 ## Structure
 
@@ -114,6 +114,7 @@ Set `VITE_API_URL` in `client/.env`:
 
 ```bash
 VITE_API_URL=http://localhost:5000/api
+VITE_RAZORPAY_KEY_ID=rzp_test_your_public_key
 ```
 
 The React app uses `/api/auth/me` on startup to load the current user from backend httpOnly cookies. JWTs are not stored in `localStorage` or `sessionStorage`.
@@ -130,11 +131,17 @@ Auth routes:
 - `/admin/events/create` - admin-only event creation
 - `/admin/events/:id/edit` - admin-only event editing
 - `/events` - published public events
-- `/events/:slug` - public event details with a booking placeholder
+- `/events/:slug` - public event details with ticket selection and pending booking creation
+- `/checkout/:bookingId` - protected Razorpay checkout for pending bookings
+- `/payment-success` - protected payment confirmation page
+- `/payment-failed` - protected payment failure page
+- `/user/bookings` - protected list of the user's bookings
 
 Admin APIs are available under `/api/admin/*` for user, category, event, and ticket type management. Public category discovery is available at `/api/categories`; public published events are available at `/api/events`, `/api/events/featured`, and `/api/events/:slug`.
 
-Authenticated users can create pending bookings with `POST /api/bookings`, list their bookings with `GET /api/bookings/my`, and view their own booking details with `GET /api/bookings/:id`. Booking totals are calculated by the backend from `TicketType.price`; payment confirmation is still a later step.
+Authenticated users can create pending bookings with `POST /api/bookings`, list their bookings with `GET /api/bookings/my`, and view their own booking details with `GET /api/bookings/:id`. Booking totals are calculated by the backend from `TicketType.price`; Razorpay checkout creates orders through the backend and confirms bookings only after server-side signature verification.
+
+Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` in `server/.env`. Only the key id is safe for frontend use.
 
 ## Scripts
 

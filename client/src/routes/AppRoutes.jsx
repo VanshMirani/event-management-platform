@@ -5,11 +5,15 @@ import { AdminEventCreatePage } from "../pages/AdminEventCreatePage.jsx";
 import { AdminEventEditPage } from "../pages/AdminEventEditPage.jsx";
 import { AdminEventsPage } from "../pages/AdminEventsPage.jsx";
 import { AdminUsersPage } from "../pages/AdminUsersPage.jsx";
+import { CheckoutPage } from "../pages/CheckoutPage.jsx";
 import { EventDetailPage } from "../pages/EventDetailPage.jsx";
 import { EventsPage } from "../pages/EventsPage.jsx";
 import { HomePage } from "../pages/HomePage.jsx";
 import { LoginPage } from "../pages/LoginPage.jsx";
+import { PaymentFailedPage } from "../pages/PaymentFailedPage.jsx";
+import { PaymentSuccessPage } from "../pages/PaymentSuccessPage.jsx";
 import { RegisterPage } from "../pages/RegisterPage.jsx";
+import { UserBookingsPage } from "../pages/UserBookingsPage.jsx";
 import { UserDashboardPage } from "../pages/UserDashboardPage.jsx";
 import { AdminRoute } from "./AdminRoute.jsx";
 import { ProtectedRoute } from "./ProtectedRoute.jsx";
@@ -27,6 +31,38 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <UserDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/user/bookings"
+        element={
+          <ProtectedRoute>
+            <UserBookingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/checkout/:bookingId"
+        element={
+          <ProtectedRoute>
+            <CheckoutPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/payment-success"
+        element={
+          <ProtectedRoute>
+            <PaymentSuccessPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/payment-failed"
+        element={
+          <ProtectedRoute>
+            <PaymentFailedPage />
           </ProtectedRoute>
         }
       />
