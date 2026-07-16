@@ -132,7 +132,9 @@ Auth routes:
 - `/events` - published public events
 - `/events/:slug` - public event details with a booking placeholder
 
-Admin APIs are available under `/api/admin/*` for user, category, and event management. Public category discovery is available at `/api/categories`; public published events are available at `/api/events`, `/api/events/featured`, and `/api/events/:slug`.
+Admin APIs are available under `/api/admin/*` for user, category, event, and ticket type management. Public category discovery is available at `/api/categories`; public published events are available at `/api/events`, `/api/events/featured`, and `/api/events/:slug`.
+
+Authenticated users can create pending bookings with `POST /api/bookings`, list their bookings with `GET /api/bookings/my`, and view their own booking details with `GET /api/bookings/:id`. Booking totals are calculated by the backend from `TicketType.price`; payment confirmation is still a later step.
 
 ## Scripts
 

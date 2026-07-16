@@ -245,3 +245,41 @@ Public endpoint returning only published featured events.
 ### GET `/events/:slug`
 
 Public endpoint returning one published event by slug. Draft events return `404`.
+
+### GET `/events/:slug/ticket-types`
+
+Public endpoint returning active ticket types for one published event.
+
+## Bookings
+
+Booking routes require a valid authenticated user cookie. Bookings created by this MVP stay `PENDING`; payment confirmation is intentionally not implemented yet.
+
+### POST `/bookings`
+
+Creates a pending booking for one ticket type, reserves available ticket quantity, calculates totals from the database ticket price, and sets `expiresAt` to 10 minutes after creation.
+
+Request body:
+
+```json
+{
+  "eventId": "event_id",
+  "ticketTypeId": "ticket_type_id",
+  "quantity": 2
+}
+```
+
+Responses:
+
+- `201` booking created
+- `400` validation failed, unpublished event, inactive ticket type, closed sale window, or max-per-user exceeded
+- `401` authentication required
+- `404` event or ticket type not found
+- `409` requested quantity is not available
+
+### GET `/bookings/my`
+
+Returns the authenticated user's bookings.
+
+### GET `/bookings/:id`
+
+Returns one booking owned by the authenticated user. Missing bookings and bookings owned by another user return `404`.
