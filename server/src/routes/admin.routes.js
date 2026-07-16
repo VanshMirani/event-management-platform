@@ -1,8 +1,13 @@
 import { Router } from "express";
 import {
+  getAdminDashboard,
   getAdminStatus,
+  getBookingById,
+  getBookings,
   getCategories,
   getCategoryById,
+  getPaymentById,
+  getPayments,
   getUserById,
   getUsers,
   patchCategory,
@@ -30,7 +35,11 @@ import { adminMiddleware } from "../middlewares/admin.middleware.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { validateRequest } from "../middlewares/validateRequest.js";
 import {
+  adminBookingListQuerySchema,
+  adminBookingParamsSchema,
   adminListQuerySchema,
+  adminPaymentListQuerySchema,
+  adminPaymentParamsSchema,
   adminUserParamsSchema,
   categoryParamsSchema,
   createCategorySchema,
@@ -54,6 +63,7 @@ const router = Router();
 
 router.use(authMiddleware, adminMiddleware);
 router.get("/status", getAdminStatus);
+router.get("/dashboard", getAdminDashboard);
 router.get("/users", validateRequest(adminListQuerySchema), getUsers);
 router.get("/users/:id", validateRequest(adminUserParamsSchema), getUserById);
 router.patch("/users/:id/status", validateRequest(updateUserStatusSchema), patchUserStatus);
@@ -86,5 +96,9 @@ router.delete(
   validateRequest(ticketTypeParamsSchema),
   removeAdminTicketType
 );
+router.get("/bookings", validateRequest(adminBookingListQuerySchema), getBookings);
+router.get("/bookings/:id", validateRequest(adminBookingParamsSchema), getBookingById);
+router.get("/payments", validateRequest(adminPaymentListQuerySchema), getPayments);
+router.get("/payments/:id", validateRequest(adminPaymentParamsSchema), getPaymentById);
 
 export default router;

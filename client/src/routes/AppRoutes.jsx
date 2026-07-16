@@ -1,9 +1,13 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminCategoriesPage } from "../pages/AdminCategoriesPage.jsx";
+import { AdminBookingDetailPage } from "../pages/AdminBookingDetailPage.jsx";
+import { AdminBookingsPage } from "../pages/AdminBookingsPage.jsx";
 import { AdminDashboardPage } from "../pages/AdminDashboardPage.jsx";
 import { AdminEventCreatePage } from "../pages/AdminEventCreatePage.jsx";
 import { AdminEventEditPage } from "../pages/AdminEventEditPage.jsx";
 import { AdminEventsPage } from "../pages/AdminEventsPage.jsx";
+import { AdminPaymentDetailPage } from "../pages/AdminPaymentDetailPage.jsx";
+import { AdminPaymentsPage } from "../pages/AdminPaymentsPage.jsx";
 import { AdminUsersPage } from "../pages/AdminUsersPage.jsx";
 import { CheckoutPage } from "../pages/CheckoutPage.jsx";
 import { EventDetailPage } from "../pages/EventDetailPage.jsx";
@@ -111,6 +115,38 @@ export function AppRoutes() {
         element={
           <AdminRoute>
             <AdminEventEditPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/bookings"
+        element={
+          <AdminRoute>
+            <AdminBookingsPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/bookings/:id"
+        element={
+          <AdminRoute>
+            <AdminBookingDetailPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/payments"
+        element={
+          <AdminRoute>
+            <AdminPaymentsPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/payments/:id"
+        element={
+          <AdminRoute>
+            <AdminPaymentDetailPage />
           </AdminRoute>
         }
       />

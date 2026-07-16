@@ -6,8 +6,8 @@ const adminLinks = [
   { label: "Categories", to: "/admin/categories" },
   { label: "Events", to: "/admin/events" },
   { label: "Create event", to: "/admin/events/create" },
-  { label: "Bookings", to: "/admin/dashboard#bookings" },
-  { label: "Payments", to: "/admin/dashboard#payments" }
+  { label: "Bookings", to: "/admin/bookings" },
+  { label: "Payments", to: "/admin/payments" }
 ];
 
 export function AdminNav() {
@@ -16,7 +16,9 @@ export function AdminNav() {
   return (
     <nav className="flex flex-wrap gap-2 border-b border-ink/10 pb-5">
       {adminLinks.map((link) => {
-        const isActive = link.to === location.pathname;
+        const isActive =
+          link.to === location.pathname ||
+          (link.to !== "/admin/dashboard" && location.pathname.startsWith(`${link.to}/`));
 
         return (
           <Link

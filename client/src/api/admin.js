@@ -1,5 +1,23 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "./http.js";
 
+function buildQuery(params = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.set(key, value);
+    }
+  });
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function getAdminDashboard() {
+  const response = await apiGet("/admin/dashboard");
+  return response.data.dashboard;
+}
+
 export async function listAdminUsers() {
   const response = await apiGet("/admin/users");
   return response.data;
@@ -80,4 +98,24 @@ export async function updateAdminTicketType(ticketTypeId, data) {
 
 export async function deleteAdminTicketType(ticketTypeId) {
   await apiDelete(`/admin/ticket-types/${ticketTypeId}`);
+}
+
+export async function listAdminBookings(params = {}) {
+  const response = await apiGet(`/admin/bookings${buildQuery(params)}`);
+  return response.data;
+}
+
+export async function getAdminBooking(bookingId) {
+  const response = await apiGet(`/admin/bookings/${bookingId}`);
+  return response.data.booking;
+}
+
+export async function listAdminPayments(params = {}) {
+  const response = await apiGet(`/admin/payments${buildQuery(params)}`);
+  return response.data;
+}
+
+export async function getAdminPayment(paymentId) {
+  const response = await apiGet(`/admin/payments/${paymentId}`);
+  return response.data.payment;
 }

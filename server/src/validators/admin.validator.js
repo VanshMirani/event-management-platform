@@ -7,6 +7,47 @@ export const adminListQuerySchema = z.object({
   })
 });
 
+const bookingStatusSchema = z.enum(["PENDING", "CONFIRMED", "FAILED", "CANCELLED", "REFUNDED"]);
+const paymentStatusSchema = z.enum(["CREATED", "SUCCESS", "FAILED", "REFUNDED"]);
+
+export const adminBookingListQuerySchema = z.object({
+  query: z.object({
+    page: z.string().optional(),
+    limit: z.string().optional(),
+    status: bookingStatusSchema.optional(),
+    eventId: z.string().min(1).optional(),
+    userId: z.string().min(1).optional(),
+    search: z.string().trim().optional(),
+    dateFrom: z.string().optional(),
+    dateTo: z.string().optional()
+  })
+});
+
+export const adminPaymentListQuerySchema = z.object({
+  query: z.object({
+    page: z.string().optional(),
+    limit: z.string().optional(),
+    status: paymentStatusSchema.optional(),
+    provider: z.string().trim().min(1).optional(),
+    bookingId: z.string().min(1).optional(),
+    search: z.string().trim().optional(),
+    dateFrom: z.string().optional(),
+    dateTo: z.string().optional()
+  })
+});
+
+export const adminBookingParamsSchema = z.object({
+  params: z.object({
+    id: z.string().min(1)
+  })
+});
+
+export const adminPaymentParamsSchema = z.object({
+  params: z.object({
+    id: z.string().min(1)
+  })
+});
+
 export const adminUserParamsSchema = z.object({
   params: z.object({
     id: z.string().min(1)

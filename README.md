@@ -130,6 +130,10 @@ Auth routes:
 - `/admin/events` - admin-only event list with publish controls
 - `/admin/events/create` - admin-only event creation
 - `/admin/events/:id/edit` - admin-only event editing
+- `/admin/bookings` - admin-only booking management
+- `/admin/bookings/:id` - admin-only booking detail
+- `/admin/payments` - admin-only payment management
+- `/admin/payments/:id` - admin-only payment detail
 - `/events` - published public events
 - `/events/:slug` - public event details with ticket selection and pending booking creation
 - `/checkout/:bookingId` - protected Razorpay checkout for pending bookings
@@ -137,7 +141,7 @@ Auth routes:
 - `/payment-failed` - protected payment failure page
 - `/user/bookings` - protected list of the user's bookings
 
-Admin APIs are available under `/api/admin/*` for user, category, event, and ticket type management. Public category discovery is available at `/api/categories`; public published events are available at `/api/events`, `/api/events/featured`, and `/api/events/:slug`.
+Admin APIs are available under `/api/admin/*` for dashboard stats, users, categories, events, ticket types, bookings, and payments. Public category discovery is available at `/api/categories`; public published events are available at `/api/events`, `/api/events/featured`, and `/api/events/:slug`.
 
 Authenticated users can create pending bookings with `POST /api/bookings`, list their bookings with `GET /api/bookings/my`, and view their own booking details with `GET /api/bookings/:id`. Booking totals are calculated by the backend from `TicketType.price`; Razorpay checkout creates orders through the backend and confirms bookings only after server-side signature verification.
 

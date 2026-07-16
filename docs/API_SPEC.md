@@ -91,6 +91,10 @@ Responses:
 
 All `/admin/*` routes require a valid authenticated user with role `ADMIN`. Normal users receive `403`.
 
+### GET `/admin/dashboard`
+
+Returns live admin dashboard stats, including user, event, booking, payment, and revenue counts plus recent bookings and payments.
+
 ### GET `/admin/users`
 
 Returns paginated users without `passwordHash`.
@@ -226,6 +230,44 @@ Sets event status to `PUBLISHED`.
 
 Sets event status to `DRAFT`.
 
+### GET `/admin/bookings`
+
+Returns paginated booking records for admins. Results include booking code, user, event, status, final amount, payment status, created time, and expiry time.
+
+Query parameters:
+
+- `page` optional, defaults to `1`
+- `limit` optional, defaults to `20`, maximum `100`
+- `status` optional: `PENDING`, `CONFIRMED`, `FAILED`, `CANCELLED`, `REFUNDED`
+- `eventId` optional
+- `userId` optional
+- `search` optional; searches booking code, user name/email, and event title
+- `dateFrom` optional
+- `dateTo` optional
+
+### GET `/admin/bookings/:id`
+
+Returns one booking with safe user details, event details, booking items, ticket type details, and payment details when available.
+
+### GET `/admin/payments`
+
+Returns paginated payment records for admins. Results include payment id, booking code, user, event, provider ids, amount, status, paid time, and created time.
+
+Query parameters:
+
+- `page` optional, defaults to `1`
+- `limit` optional, defaults to `20`, maximum `100`
+- `status` optional: `CREATED`, `SUCCESS`, `FAILED`, `REFUNDED`
+- `provider` optional
+- `bookingId` optional
+- `search` optional; searches provider ids, booking code, user name/email, and event title
+- `dateFrom` optional
+- `dateTo` optional
+
+### GET `/admin/payments/:id`
+
+Returns one payment with linked booking, user, event, provider order id, provider payment id, and safe raw provider payload. Payment signatures and user password hashes are not returned.
+
 ## Categories
 
 ### GET `/categories`
@@ -252,7 +294,7 @@ Public endpoint returning active ticket types for one published event.
 
 ## Bookings
 
-Booking routes require a valid authenticated user cookie. Bookings created by this MVP stay `PENDING`; payment confirmation is intentionally not implemented yet.
+Booking routes require a valid authenticated user cookie. Bookings are created as `PENDING` and later confirmed by verified payment.
 
 ### POST `/bookings`
 

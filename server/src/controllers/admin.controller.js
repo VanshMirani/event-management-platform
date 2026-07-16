@@ -1,8 +1,13 @@
 import {
   createCategory,
   deleteCategory,
+  getAdminBooking,
+  getAdminDashboardData,
+  getAdminPayment,
   getCategory,
   getUser,
+  listAdminBookings,
+  listAdminPayments,
   listCategories,
   listUsers,
   updateCategory,
@@ -20,6 +25,15 @@ export function getAdminStatus(_req, res) {
     },
     "Admin module ready"
   );
+}
+
+export async function getAdminDashboard(req, res, next) {
+  try {
+    const dashboard = await getAdminDashboardData();
+    return sendSuccess(res, { dashboard }, "Admin dashboard fetched");
+  } catch (error) {
+    return next(error);
+  }
 }
 
 export async function getUsers(req, res, next) {
@@ -106,6 +120,42 @@ export async function removeCategory(req, res, next) {
   try {
     await deleteCategory(req.validated.params.id);
     return sendSuccess(res, null, "Category deleted");
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getBookings(req, res, next) {
+  try {
+    const data = await listAdminBookings(req.validated.query);
+    return sendSuccess(res, data, "Bookings fetched");
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getBookingById(req, res, next) {
+  try {
+    const booking = await getAdminBooking(req.validated.params.id);
+    return sendSuccess(res, { booking }, "Booking fetched");
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getPayments(req, res, next) {
+  try {
+    const data = await listAdminPayments(req.validated.query);
+    return sendSuccess(res, data, "Payments fetched");
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getPaymentById(req, res, next) {
+  try {
+    const payment = await getAdminPayment(req.validated.params.id);
+    return sendSuccess(res, { payment }, "Payment fetched");
   } catch (error) {
     return next(error);
   }
