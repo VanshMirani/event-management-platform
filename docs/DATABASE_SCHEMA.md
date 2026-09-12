@@ -75,7 +75,7 @@ From the repository root, the equivalent workspace command is:
 npm run prisma:migrate -- --name complete_mvp_schema
 ```
 
-Then seed development data after setting `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and optionally `ADMIN_NAME` in `server/.env`:
+Then seed development data after setting `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `server/.env`:
 
 ```bash
 npm run prisma:seed

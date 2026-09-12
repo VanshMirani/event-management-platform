@@ -144,7 +144,7 @@ const sampleEvents = [
 async function seedAdmin() {
   const email = requiredEnv("ADMIN_EMAIL").toLowerCase();
   const password = requiredEnv("ADMIN_PASSWORD");
-  const name = process.env.ADMIN_NAME ?? "Platform Admin";
+  const name = "EventFlow Admin";
   const passwordHash = await bcrypt.hash(password, 12);
 
   return prisma.user.upsert({

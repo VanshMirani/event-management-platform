@@ -110,7 +110,6 @@ a separate payment/security review before accepting customers.
 | `DATABASE_URL` | PostgreSQL connection URL |
 | `JWT_ACCESS_SECRET` | Signs short-lived access tokens |
 | `JWT_REFRESH_SECRET` | Signs refresh tokens |
-| `ADMIN_NAME` | Seeded administrator display name |
 | `ADMIN_EMAIL` | Seeded administrator email |
 | `ADMIN_PASSWORD` | Seeded administrator password |
 | `DEMO_MODE` | Enables the server-side no-charge demo confirmation route |

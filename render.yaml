@@ -32,8 +32,6 @@ services:
         value: "true"
       - key: VITE_ENABLE_DEMO_CHECKOUT
         value: "true"
-      - key: ADMIN_NAME
-        value: EventFlow Admin
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
