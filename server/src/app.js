@@ -52,6 +52,10 @@ if (env.NODE_ENV !== "test") {
   app.use(morgan("dev"));
 }
 
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "private, no-store");
+  next();
+});
 app.use("/api", apiRoutes);
 
 if (env.NODE_ENV === "production") {
