@@ -23,11 +23,11 @@ export function AppLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-linen text-ink">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/88 shadow-lift backdrop-blur-xl">
+    <div className="min-h-screen bg-transparent text-ink">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/[0.88] shadow-lift backdrop-blur-xl">
         <nav
           aria-label="Primary navigation"
-          className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4"
+          className="site-shell flex flex-wrap items-center justify-between gap-3 py-4"
         >
           <Link
             className="brand-logo rounded-lg px-3 py-2 text-lg font-extrabold tracking-normal transition hover:shadow-glow"
@@ -39,14 +39,14 @@ export function AppLayout({ children }) {
           <button
             aria-controls="primary-navigation-links"
             aria-expanded={isMenuOpen}
-            className="action-secondary px-4 py-2 text-sm font-extrabold md:hidden"
+            className="action-secondary px-4 py-2 text-sm font-extrabold lg:hidden"
             onClick={() => setIsMenuOpen((current) => !current)}
             type="button"
           >
             {isMenuOpen ? "Close" : "Menu"}
           </button>
           <div
-            className={`${isMenuOpen ? "flex" : "hidden"} w-full flex-col items-stretch gap-2 text-sm font-bold text-ink/70 md:flex md:w-auto md:flex-row md:flex-wrap md:items-center md:gap-5`}
+            className={`${isMenuOpen ? "flex" : "hidden"} w-full flex-col items-stretch gap-2 text-sm font-bold text-ink/70 lg:flex lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:gap-5`}
             id="primary-navigation-links"
           >
             <Link

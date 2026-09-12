@@ -7,6 +7,12 @@ export function EventHighlights() {
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const eventGridClassName =
+    events.length === 1
+      ? "mx-auto grid max-w-2xl gap-5"
+      : events.length === 2
+        ? "mx-auto grid max-w-5xl gap-5 md:grid-cols-2"
+        : "grid gap-5 md:grid-cols-2 xl:grid-cols-3";
 
   useEffect(() => {
     async function loadFeaturedEvents() {
@@ -26,7 +32,7 @@ export function EventHighlights() {
   }, []);
 
   return (
-    <section id="events" className="mx-auto w-full max-w-6xl px-5 py-14">
+    <section id="events" className="site-shell py-14 lg:py-20">
       <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <p className="section-kicker">
@@ -54,7 +60,7 @@ export function EventHighlights() {
           No featured events are published yet.
         </p>
       ) : (
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className={eventGridClassName}>
           {events.map((event) => (
             <EventCard event={event} key={event.id} />
           ))}

@@ -91,13 +91,13 @@ export function LoginPage() {
             the admin workspace.
           </p>
           <div className="mt-6 grid gap-3 text-sm font-bold text-ink/70 sm:grid-cols-3">
-            <span className="rounded-lg border border-cyan/20 bg-white/72 px-3 py-2">
+            <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
               Secure cookies
             </span>
-            <span className="rounded-lg border border-cyan/20 bg-white/72 px-3 py-2">
+            <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
               Admin controls
             </span>
-            <span className="rounded-lg border border-cyan/20 bg-white/72 px-3 py-2">
+            <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
               QR tickets
             </span>
           </div>

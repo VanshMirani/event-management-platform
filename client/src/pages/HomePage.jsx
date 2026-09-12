@@ -80,12 +80,12 @@ export function HomePage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-16">
+      <section className="site-shell grid gap-8 py-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center lg:gap-12 lg:py-16 xl:gap-16 xl:py-20">
         <div>
           <p className="section-kicker">
             Event management platform
           </p>
-          <h1 className="mt-4 max-w-3xl text-4xl font-extrabold tracking-normal text-ink sm:text-6xl">
+          <h1 className="mt-4 max-w-3xl text-balance text-4xl font-extrabold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
             Plan, publish, and manage <span className="gradient-text">memorable events</span>.
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/70">
@@ -109,20 +109,20 @@ export function HomePage() {
         </div>
 
         <div
-          className="surface-card min-h-[390px] overflow-hidden rounded-lg bg-cover bg-center shadow-glow"
+          className="surface-card h-[300px] overflow-hidden rounded-lg bg-cover bg-center shadow-glow sm:h-[360px] lg:h-[420px]"
           style={{
             backgroundImage:
               "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(248,250,252,0.92)), url('https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80')"
           }}
         >
-          <div className="flex h-full min-h-[390px] flex-col justify-end p-6">
-            <div className="rounded-lg border border-white/70 bg-white/86 p-5 shadow-lift backdrop-blur">
-            <p className="text-sm font-extrabold uppercase tracking-wide text-cyan">
-              Live workspace
-            </p>
-            <p className="mt-2 max-w-sm text-3xl font-bold tracking-normal text-ink">
-              Conference operations from discovery to check-in
-            </p>
+          <div className="flex h-full flex-col justify-end p-5 sm:p-6">
+            <div className="rounded-lg border border-white/70 bg-white/[0.86] p-5 shadow-lift backdrop-blur">
+              <p className="text-sm font-extrabold uppercase tracking-wide text-cyan">
+                Live workspace
+              </p>
+              <p className="mt-2 max-w-sm text-2xl font-bold tracking-normal text-ink sm:text-3xl">
+                Conference operations from discovery to check-in
+              </p>
             </div>
           </div>
         </div>
@@ -132,7 +132,7 @@ export function HomePage() {
         id="operations"
         className="border-y border-indigo-100/80 bg-white/60 py-8 backdrop-blur"
       >
-        <div className="mx-auto grid w-full max-w-6xl gap-4 px-5 sm:grid-cols-3">
+        <div className="site-shell grid gap-4 sm:grid-cols-3">
           {metrics.map((metric) => (
             <FeaturePill
               key={metric.label}
@@ -143,7 +143,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-5 py-14">
+      <section className="site-shell py-14 lg:py-20">
         <div className="mb-6">
           <p className="section-kicker">Platform highlights</p>
           <h2 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
@@ -163,7 +163,7 @@ export function HomePage() {
 
       <EventHighlights />
 
-      <section className="mx-auto w-full max-w-6xl px-5 pb-14">
+      <section className="site-shell pb-14 lg:pb-20">
         <div className="surface-card rounded-lg p-6">
           <div className="mb-6">
             <p className="section-kicker">How it works</p>
@@ -174,7 +174,7 @@ export function HomePage() {
           <div className="grid gap-4 md:grid-cols-3">
             {workflowSteps.map((step) => (
               <div
-                className="rounded-lg border border-indigo-100 bg-white/78 p-5 shadow-lift"
+                className="rounded-lg border border-indigo-100 bg-white/[0.78] p-5 shadow-lift"
                 key={step.label}
               >
                 <span className="inline-flex rounded-lg border border-cyan/25 bg-cyan/10 px-3 py-1 text-sm font-extrabold text-cyan">
@@ -188,7 +188,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section id="bookings" className="mx-auto w-full max-w-6xl px-5 pb-14">
+      <section id="bookings" className="site-shell pb-14 lg:pb-20">
         <div className="hero-panel grid gap-5 rounded-lg p-6 md:grid-cols-[1fr_auto] md:items-center">
           <div>
             <p className="text-sm font-extrabold uppercase tracking-wide text-cyan">

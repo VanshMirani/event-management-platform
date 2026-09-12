@@ -98,13 +98,13 @@ export function RegisterPage() {
             tickets from one place.
           </p>
           <div className="mt-6 grid gap-3 text-sm font-bold text-ink/70 sm:grid-cols-3">
-            <span className="rounded-lg border border-cyan/20 bg-white/72 px-3 py-2">
+            <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
               Fast checkout
             </span>
-            <span className="rounded-lg border border-cyan/20 bg-white/72 px-3 py-2">
+            <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
               Ticket history
             </span>
-            <span className="rounded-lg border border-cyan/20 bg-white/72 px-3 py-2">
+            <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
               QR entry
             </span>
           </div>
