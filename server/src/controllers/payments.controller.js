@@ -1,5 +1,6 @@
 import {
   confirmDemoBooking,
+  confirmFreeBooking,
   createRazorpayOrderForBooking,
   verifyRazorpayPayment
 } from "../services/payment.service.js";
@@ -35,6 +36,19 @@ export async function postDemoBookingConfirmation(req, res, next) {
     });
 
     return sendSuccess(res, { booking }, "Demo booking confirmed");
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function postFreeBookingConfirmation(req, res, next) {
+  try {
+    const booking = await confirmFreeBooking({
+      bookingId: req.validated.body.bookingId,
+      userId: req.user.id
+    });
+
+    return sendSuccess(res, { booking }, "Free booking confirmed");
   } catch (error) {
     return next(error);
   }

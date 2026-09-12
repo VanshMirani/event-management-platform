@@ -228,6 +228,9 @@ function verifyPayment(agent, { bookingId, orderId, paymentId, signature }) {
 paymentDescribe("razorpay payments", () => {
   beforeEach(() => {
     runtimeEnv.DEMO_MODE = false;
+    runtimeEnv.RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+    runtimeEnv.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+    runtimeEnv.RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
     lastRazorpayOrderRequest = null;
     global.fetch = async (_url, options) => {
       const body = JSON.parse(options.body);
@@ -350,6 +353,21 @@ paymentDescribe("razorpay payments", () => {
     assert.equal(payment.status, "CREATED");
   });
 
+  it("rejects live Razorpay credentials before contacting the provider", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+    runtimeEnv.RAZORPAY_KEY_ID = "rzp_live_key_id";
+
+    const response = await agent
+      .post("/api/payments/razorpay/create-order")
+      .send({ bookingId: booking.id })
+      .expect(500);
+
+    assert.match(response.body.message, /only razorpay test credentials/i);
+    assert.equal(lastRazorpayOrderRequest, null);
+  });
+
   it("rejects order creation for another user's booking", async () => {
     const { user, event, ticketType } = await createFixture();
     const otherUser = await createUser({
@@ -415,6 +433,20 @@ paymentDescribe("razorpay payments", () => {
     assert.equal(lastRazorpayOrderRequest, null);
   });
 
+  it("rejects the free confirmation route for a paid booking", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+
+    const response = await agent
+      .post("/api/payments/free-confirm")
+      .send({ bookingId: booking.id })
+      .expect(400);
+
+    assert.match(response.body.message, /payment is required/i);
+    assert.equal(lastRazorpayOrderRequest, null);
+  });
+
   it("cancels a demo hold when its event is no longer available", async () => {
     const { user, event, ticketType } = await createFixture();
     const booking = await createDirectBooking({ user, event, ticketType });
@@ -450,7 +482,7 @@ paymentDescribe("razorpay payments", () => {
     assert.equal(updatedTicketType.availableQuantity, ticketType.totalQuantity);
   });
 
-  it("confirms a free booking and generates tickets without a charge", async () => {
+  it("confirms a free booking with demo mode disabled", async () => {
     const { user, event, ticketType } = await createFixture({
       ticketOverrides: {
         price: "0.00"
@@ -458,10 +490,9 @@ paymentDescribe("razorpay payments", () => {
     });
     const booking = await createDirectBooking({ user, event, ticketType });
     const agent = await loginAgent(user);
-    runtimeEnv.DEMO_MODE = true;
 
     const response = await agent
-      .post("/api/payments/demo-confirm")
+      .post("/api/payments/free-confirm")
       .send({ bookingId: booking.id })
       .expect(200);
     const payment = await prisma.payment.findUnique({
@@ -541,6 +572,34 @@ paymentDescribe("razorpay payments", () => {
     }).expect(400);
 
     assert.equal(response.body.status, "error");
+  });
+
+  it("rejects direct payment verification when a live key is configured", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+    runtimeEnv.RAZORPAY_KEY_ID = "rzp_live_key_id";
+
+    const response = await verifyPayment(agent, {
+      bookingId: booking.id,
+      orderId: `order_${randomUUID()}`,
+      paymentId: `pay_${randomUUID()}`,
+      signature: "test-signature"
+    }).expect(500);
+
+    assert.match(response.body.message, /only razorpay test credentials/i);
+  });
+
+  it("rejects Razorpay webhooks when a live key is configured", async () => {
+    runtimeEnv.RAZORPAY_KEY_ID = "rzp_live_key_id";
+
+    const response = await request(app)
+      .post("/api/webhooks/razorpay")
+      .set("x-razorpay-signature", "test-signature")
+      .send({ event: "payment.captured", payload: {} })
+      .expect(500);
+
+    assert.match(response.body.message, /only razorpay test credentials/i);
   });
 
   it("rejects direct verification after expiry and restores reserved stock", async () => {

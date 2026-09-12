@@ -14,3 +14,8 @@ export async function confirmDemoPayment(bookingId) {
   const response = await apiPost("/payments/demo-confirm", { bookingId });
   return response.data.booking;
 }
+
+export async function confirmFreeBooking(bookingId) {
+  const response = await apiPost("/payments/free-confirm", { bookingId });
+  return response.data.booking;
+}

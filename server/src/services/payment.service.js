@@ -151,12 +151,6 @@ async function getOwnedBookingForPayment(bookingId, userId) {
   return booking;
 }
 
-function ensureDemoMode() {
-  if (!env.DEMO_MODE) {
-    throw createHttpError(404, "Payment route not found");
-  }
-}
-
 function ensureRealPaymentMode() {
   if (env.DEMO_MODE) {
     throw createHttpError(404, "Real payment routes are disabled in demo mode");
@@ -333,8 +327,8 @@ export async function createRazorpayOrderForBooking({ bookingId, userId }) {
   };
 }
 
-export async function confirmDemoBooking({ bookingId, userId }) {
-  ensureDemoMode();
+async function confirmBookingWithoutPayment({ bookingId, userId, allowDemo }) {
+  const demoModeEnabled = allowDemo && env.DEMO_MODE;
   const expiredBookingIds = await releaseExpiredPendingBookings({ bookingId, userId });
 
   if (expiredBookingIds.includes(bookingId)) {
@@ -343,11 +337,13 @@ export async function confirmDemoBooking({ bookingId, userId }) {
 
   const result = await runSerializableTransaction(async (tx) => {
     const booking = await getBookingPaymentForVerification(tx, bookingId, userId);
+    const isFreeBooking = Number(booking.totalAmount) === 0;
 
     if (
       booking.status === "CONFIRMED" &&
       booking.payment?.status === "SUCCESS" &&
-      ["demo", "free"].includes(booking.payment.provider)
+      (booking.payment.provider === "free" ||
+        (demoModeEnabled && booking.payment.provider === "demo"))
     ) {
       await generateTicketsForBooking(booking.id, tx);
       return {
@@ -360,6 +356,13 @@ export async function confirmDemoBooking({ bookingId, userId }) {
       return {
         booking: null,
         reason: "not_pending"
+      };
+    }
+
+    if (!isFreeBooking && !demoModeEnabled) {
+      return {
+        booking: null,
+        reason: "payment_required"
       };
     }
 
@@ -453,7 +456,6 @@ export async function confirmDemoBooking({ bookingId, userId }) {
       };
     }
 
-    const isFreeBooking = Number(booking.totalAmount) === 0;
     const provider = isFreeBooking ? "free" : "demo";
     const providerPaymentId = `${provider}_${randomUUID()}`;
 
@@ -469,7 +471,7 @@ export async function confirmDemoBooking({ bookingId, userId }) {
         amount: new Prisma.Decimal(booking.totalAmount),
         currency: booking.currency,
         rawPayload: {
-          demoMode: true,
+          demoMode: provider === "demo",
           noCharge: true,
           freeBooking: isFreeBooking
         },
@@ -485,7 +487,7 @@ export async function confirmDemoBooking({ bookingId, userId }) {
         amount: new Prisma.Decimal(booking.totalAmount),
         currency: booking.currency,
         rawPayload: {
-          demoMode: true,
+          demoMode: provider === "demo",
           noCharge: true,
           freeBooking: isFreeBooking
         },
@@ -517,11 +519,27 @@ export async function confirmDemoBooking({ bookingId, userId }) {
     throw createHttpError(409, "Event is no longer available");
   }
 
+  if (result.reason === "payment_required") {
+    throw createHttpError(400, "Payment is required for this booking");
+  }
+
   if (!result.booking) {
     throw createHttpError(409, "Booking is no longer available for confirmation");
   }
 
   return result.booking;
+}
+
+export async function confirmDemoBooking(input) {
+  if (!env.DEMO_MODE) {
+    throw createHttpError(404, "Payment route not found");
+  }
+
+  return confirmBookingWithoutPayment({ ...input, allowDemo: true });
+}
+
+export async function confirmFreeBooking(input) {
+  return confirmBookingWithoutPayment({ ...input, allowDemo: false });
 }
 
 export async function verifyRazorpayPayment(input, userId) {

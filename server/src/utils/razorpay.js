@@ -3,17 +3,28 @@ import { env } from "../config/env.js";
 import { createHttpError } from "./httpError.js";
 
 const RAZORPAY_ORDERS_URL = "https://api.razorpay.com/v1/orders";
+const RAZORPAY_TEST_KEY_PREFIX = "rzp_test_";
+
+function requireRazorpayTestKey() {
+  if (!env.RAZORPAY_KEY_ID?.startsWith(RAZORPAY_TEST_KEY_PREFIX)) {
+    throw createHttpError(500, "Only Razorpay test credentials are allowed");
+  }
+}
 
 function requireRazorpayCredentials() {
   if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
     throw createHttpError(500, "Razorpay is not configured");
   }
+
+  requireRazorpayTestKey();
 }
 
 function requireWebhookSecret() {
   if (!env.RAZORPAY_WEBHOOK_SECRET) {
     throw createHttpError(500, "Razorpay webhook is not configured");
   }
+
+  requireRazorpayTestKey();
 }
 
 function createSignature(payload, secret) {
@@ -75,6 +86,8 @@ export function verifyRazorpayPaymentSignature({
     throw createHttpError(500, "Razorpay is not configured");
   }
 
+  requireRazorpayTestKey();
+
   const expectedSignature = createSignature(`${orderId}|${paymentId}`, actualSecret);
   return timingSafeEqual(expectedSignature, signature);
 }
@@ -89,6 +102,8 @@ export function verifyRazorpayWebhookSignature({
   if (!actualSecret) {
     requireWebhookSecret();
   }
+
+  requireRazorpayTestKey();
 
   if (!rawBody || !signature) {
     return false;

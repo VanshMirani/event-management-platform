@@ -330,6 +330,14 @@ Returns one booking owned by the authenticated user. Missing bookings and bookin
 
 Payment routes use Razorpay test mode. The backend never trusts frontend amounts or payment success; it creates orders from server-side booking totals and confirms bookings only after verifying Razorpay signatures.
 
+### POST `/payments/free-confirm`
+
+Requires authentication. Confirms the authenticated user's own zero-total `PENDING` booking without opening Razorpay and generates its QR tickets. A paid booking is rejected with `400`.
+
+### POST `/payments/demo-confirm`
+
+Requires authentication and `DEMO_MODE=true`. Confirms the authenticated user's own `PENDING` booking without contacting Razorpay. This optional fallback is disabled in deployed Razorpay Test Mode and returns `404` when disabled.
+
 ### POST `/payments/razorpay/create-order`
 
 Requires authentication. Creates a Razorpay order for the authenticated user's own `PENDING` booking and creates or updates the local `Payment` record.

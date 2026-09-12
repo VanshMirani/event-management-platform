@@ -11,4 +11,6 @@ test("GET /api/health returns API health", async () => {
 
   assert.equal(response.body.status, "success");
   assert.equal(response.body.data.status, "ok");
+  assert.match(response.headers["content-security-policy"], /checkout\.razorpay\.com/);
+  assert.match(response.headers["content-security-policy"], /api\.razorpay\.com/);
 });

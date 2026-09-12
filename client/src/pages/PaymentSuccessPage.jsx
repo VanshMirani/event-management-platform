@@ -95,10 +95,12 @@ export function PaymentSuccessPage() {
               Your booking is confirmed.
             </h1>
             <p className="mt-4 text-sm leading-6 text-ink/65">
-              {booking.payment?.provider === "demo" || booking.payment?.provider === "free"
+              {booking.payment?.provider === "free"
+                ? "Your free booking was confirmed without a payment."
+                : booking.payment?.provider === "demo"
                 ? "This demo booking was confirmed without a real payment or charge."
                 : booking.payment?.provider === "razorpay"
-                  ? "The backend verified your payment and confirmed your booking."
+                  ? "The backend verified your Razorpay test payment and confirmed your booking."
                   : "The backend verified and confirmed your booking."}
             </p>
             <div className="mt-5 rounded-lg border border-cyan/15 bg-cyan/5 p-4">

@@ -16,6 +16,9 @@ const clientDistPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../client/dist"
 );
+const razorpayCheckoutOrigin = "https://checkout.razorpay.com";
+const razorpayApiOrigin = "https://api.razorpay.com";
+const razorpaySubdomains = "https://*.razorpay.com";
 
 if (env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
@@ -25,7 +28,10 @@ app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
-        imgSrc: ["'self'", "data:", "https:"]
+        connectSrc: ["'self'", razorpayApiOrigin, razorpaySubdomains],
+        frameSrc: ["'self'", razorpayCheckoutOrigin, razorpayApiOrigin, razorpaySubdomains],
+        imgSrc: ["'self'", "data:", "https:"],
+        scriptSrc: ["'self'", razorpayCheckoutOrigin]
       }
     }
   })

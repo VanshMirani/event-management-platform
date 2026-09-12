@@ -1,13 +1,14 @@
 import { Router } from "express";
 import {
   postDemoBookingConfirmation,
+  postFreeBookingConfirmation,
   postRazorpayOrder,
   verifyRazorpayOrderPayment
 } from "../controllers/payments.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { validateRequest } from "../middlewares/validateRequest.js";
 import {
-  confirmDemoBookingSchema,
+  confirmBookingSchema,
   createRazorpayOrderSchema,
   verifyPaymentSchema
 } from "../validators/payment.validator.js";
@@ -15,9 +16,16 @@ import {
 const router = Router();
 
 router.post(
+  "/free-confirm",
+  authMiddleware,
+  validateRequest(confirmBookingSchema),
+  postFreeBookingConfirmation
+);
+
+router.post(
   "/demo-confirm",
   authMiddleware,
-  validateRequest(confirmDemoBookingSchema),
+  validateRequest(confirmBookingSchema),
   postDemoBookingConfirmation
 );
 

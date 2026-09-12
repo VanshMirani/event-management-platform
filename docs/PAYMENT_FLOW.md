@@ -1,23 +1,27 @@
 # Payment flows
 
-## Demo mode
+## Razorpay Test Mode (deployed flow)
 
 1. A signed-in user creates a pending booking.
 2. The server calculates the amount and reserves inventory.
-3. When both demo flags are enabled, checkout displays a no-charge demo action.
-4. The protected demo endpoint validates booking ownership, status, and expiry.
-5. The server records a successful payment with demo identifiers, confirms the
-   booking, and creates the QR tickets in one transaction.
+3. The server creates a Razorpay test order using an `rzp_test_` key.
+4. Razorpay Checkout opens in Test Mode in the browser.
+5. The backend verifies the returned payment signature before confirming the
+   booking and creating QR tickets.
+6. Razorpay webhooks are signature-verified server-side when configured.
 
-This path never loads Razorpay and never collects payment details.
+The server rejects `rzp_live_` keys, so this project cannot accidentally accept
+real customer payments.
 
-## Real Razorpay flow
+Zero-value ticket bookings bypass Razorpay and use the protected
+`/api/payments/free-confirm` path even while demo mode is disabled. That route
+checks the stored server-side total and rejects paid bookings.
 
-The existing real-payment path creates an order on the server, opens Razorpay
-Checkout in the browser, and verifies the returned signature on the server
-before confirming a booking and generating tickets. Webhook verification is
-also server-side. Keep the demo flags disabled for this mode and configure all
-three Razorpay variables.
+## Optional no-charge demo fallback
 
-Real payments are outside the scope of this deployment and should be
-security- and reconciliation-reviewed before commercial use.
+When both demo flags are explicitly enabled, checkout uses the protected demo
+confirmation endpoint instead of loading Razorpay. The server validates booking
+ownership, status, inventory, and expiry, then records a clearly identified demo
+confirmation and generates QR tickets.
+
+This fallback is disabled in the hosted project.

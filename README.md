@@ -4,16 +4,17 @@ EventFlow is a full-stack event management project built with React, Express,
 PostgreSQL, and Prisma. It includes public event discovery, account management,
 ticket booking, QR tickets, an admin dashboard, and ticket check-in.
 
-The repository ships with an explicit **demo mode**. In that mode a
-signed-in user can complete checkout and receive QR tickets without sending
-money or contacting Razorpay. The UI labels this clearly. Demo mode is opt-in
-and the server rejects the demo confirmation endpoint when it is disabled.
+The deployed project uses **Razorpay Test Mode**. A signed-in user can complete
+the Razorpay checkout and receive QR tickets without transferring real money.
+The UI labels the checkout as test mode, and the server rejects live Razorpay
+keys. An optional no-charge demo confirmation remains available for local
+fallback testing but is disabled by default.
 
 ## Main flows
 
 - Browse and filter published events.
 - Register, sign in, book tickets, and view/download QR tickets.
-- Complete a no-charge checkout when demo mode is enabled.
+- Complete a Razorpay test payment and receive a confirmed QR ticket.
 - Manage users, categories, events, ticket types, bookings, and payments as an
   administrator.
 - Verify and check in a QR ticket with duplicate-use protection.
@@ -24,7 +25,7 @@ and the server rejects the demo confirmation endpoint when it is disabled.
 - Node.js, Express, cookie-based JWT authentication, and Zod
 - PostgreSQL with Prisma ORM and migrations
 - QRCode and PDFKit for digital tickets
-- Razorpay support for deployments that deliberately configure real payments
+- Razorpay Test Mode with server-side order and signature verification
 
 ## Local setup
 
@@ -44,10 +45,10 @@ Requirements: Node.js 20.19.x or Node.js 22.12 through 24.x, plus Docker Desktop
    cp client/.env.example client/.env
    ```
 
-   Replace the JWT and admin-password placeholders in `server/.env`. Leave the
-   Razorpay values empty for the project demo. Keep `DEMO_MODE=true` on the
-   server and `VITE_ENABLE_DEMO_CHECKOUT=true` in the client for no-charge
-   checkout.
+   Replace the JWT and admin-password placeholders in `server/.env`, then add
+   your Razorpay Test Mode key ID, key secret, and webhook secret. Keep
+   `DEMO_MODE=false` on the server and `VITE_ENABLE_DEMO_CHECKOUT=false` in the
+   client. Only a key ID beginning with `rzp_test_` is accepted.
 
 3. Start PostgreSQL and prepare sample data:
 
@@ -83,25 +84,28 @@ for direct visits to React pages.
 
 `render.yaml` defines one free web service and one free PostgreSQL database.
 Connect this repository in Render and create a Blueprint from the file. During
-setup, Render asks for `ADMIN_EMAIL` and `ADMIN_PASSWORD`; use deployment
-credentials and share them privately with the evaluator.
+initial setup, Render asks for `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and the three
+Razorpay Test Mode values marked `sync: false`; use deployment credentials and
+share them privately with the evaluator. For an existing Blueprint, add the
+three Razorpay values manually in the service's Environment settings before
+deploying this change.
 
 The Blueprint automatically:
 
 - installs dependencies and builds the frontend;
 - applies Prisma migrations and seeds the demo content;
 - generates both JWT secrets;
-- enables the explicitly labelled no-charge demo checkout;
+- configures the app for the explicitly labelled Razorpay Test Mode checkout
+  after its three secrets have been supplied;
 - serves the frontend and API from the same HTTPS origin; and
 - checks application and database readiness at `/api/health`.
 
 Render's free PostgreSQL instances currently expire after 30 days, so create the
 live deployment within 30 days of the evaluation (or choose a paid database).
 
-Do not enter Razorpay keys for the demo deployment. To turn the project into a
-real-payment deployment later, set `DEMO_MODE=false`, build with
-`VITE_ENABLE_DEMO_CHECKOUT=false`, configure Razorpay credentials, and perform
-a separate payment/security review before accepting customers.
+Set the three Razorpay values in Render as secrets; never commit them. Use Test
+Mode credentials only. This repository deliberately rejects `rzp_live_` keys
+and is not configured to accept real customer payments.
 
 ## Environment variables
 
@@ -116,9 +120,9 @@ a separate payment/security review before accepting customers.
 | `VITE_ENABLE_DEMO_CHECKOUT` | Builds the client with the demo checkout UI |
 | `CLIENT_ORIGIN` | Optional separate frontend origin for local/CORS use |
 | `COOKIE_DOMAIN` | Optional cookie domain; leave blank for host-only cookies |
-| `RAZORPAY_KEY_ID` | Optional real-payment public key |
-| `RAZORPAY_KEY_SECRET` | Optional real-payment secret |
-| `RAZORPAY_WEBHOOK_SECRET` | Optional real-payment webhook secret |
+| `RAZORPAY_KEY_ID` | Razorpay Test Mode public key; must start with `rzp_test_` |
+| `RAZORPAY_KEY_SECRET` | Razorpay Test Mode secret; store only on the server |
+| `RAZORPAY_WEBHOOK_SECRET` | Razorpay Test Mode webhook signing secret |
 
 ## Project structure
 
@@ -131,11 +135,12 @@ a separate payment/security review before accepting customers.
 │   └── tests/              API integration tests
 ├── docs/                   API, database, and project notes
 ├── docker-compose.yml      Local PostgreSQL
-└── render.yaml             Live demo infrastructure
+└── render.yaml             Live deployment infrastructure
 ```
 
-## Demo boundary
+## Payment safety boundary
 
-Demo confirmations are recorded with a demo provider identifier, so they are
-visibly distinguishable from verified Razorpay payments. No card, UPI, bank,
-or wallet information is collected by the demo path.
+The hosted checkout is Razorpay Test Mode and cannot transfer real money. The
+server rejects live Razorpay keys before contacting the provider. Optional demo
+confirmations use a separate provider identifier and remain visibly distinct
+from verified Razorpay test payments.
