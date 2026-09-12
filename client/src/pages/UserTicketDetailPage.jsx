@@ -15,7 +15,7 @@ export function UserTicketDetailPage() {
   const [error, setError] = useState("");
   const [downloadError, setDownloadError] = useState("");
 
-  useDocumentTitle("Ticket | EventFlow");
+  useDocumentTitle("Ticket | Event Management Platform");
 
   const loadTicket = useCallback(async () => {
     setIsLoading(true);

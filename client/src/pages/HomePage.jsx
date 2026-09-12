@@ -40,7 +40,7 @@ const workflowSteps = [
 ];
 
 export function HomePage() {
-  useDocumentTitle("EventFlow | Event Management Platform");
+  useDocumentTitle("Event Management Platform");
 
   const [eventStats, setEventStats] = useState(null);
 

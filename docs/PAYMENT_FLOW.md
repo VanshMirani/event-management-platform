@@ -1,6 +1,6 @@
 # Payment flows
 
-## Submission demo
+## Demo mode
 
 1. A signed-in user creates a pending booking.
 2. The server calculates the amount and reserves inventory.
@@ -19,5 +19,5 @@ before confirming a booking and generating tickets. Webhook verification is
 also server-side. Keep the demo flags disabled for this mode and configure all
 three Razorpay variables.
 
-Real payments are outside the scope of the submission deployment and should be
+Real payments are outside the scope of this deployment and should be
 security- and reconciliation-reviewed before commercial use.

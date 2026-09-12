@@ -30,11 +30,11 @@ export function AppLayout({ children }) {
           className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4"
         >
           <Link
-            className="brand-logo rounded-lg px-3 py-2 text-lg font-extrabold tracking-normal transition hover:shadow-glow"
+            className="brand-logo whitespace-nowrap rounded-lg px-2 py-2 text-xs font-extrabold tracking-normal transition hover:shadow-glow sm:px-3 sm:text-lg"
             onClick={() => setIsMenuOpen(false)}
             to="/"
           >
-            EventFlow
+            Event Management Platform
           </Link>
           <button
             aria-controls="primary-navigation-links"

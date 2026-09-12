@@ -16,7 +16,7 @@ function formatDate(value) {
 }
 
 export function AdminUsersPage() {
-  useDocumentTitle("Admin Users | EventFlow");
+  useDocumentTitle("Admin Users | Event Management Platform");
 
   const { currentUser } = useAuth();
   const [users, setUsers] = useState([]);

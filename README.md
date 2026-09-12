@@ -1,10 +1,10 @@
-# EventFlow
+# Event Management Platform
 
-EventFlow is a full-stack event management project built with React, Express,
+Event Management Platform is a full-stack event management project built with React, Express,
 PostgreSQL, and Prisma. It includes public event discovery, account management,
 ticket booking, QR tickets, an admin dashboard, and ticket check-in.
 
-The repository ships with an explicit **submission demo mode**. In that mode a
+The repository ships with an explicit **demo mode**. In that mode a
 signed-in user can complete checkout and receive QR tickets without sending
 money or contacting Razorpay. The UI labels this clearly. Demo mode is opt-in
 and the server rejects the demo confirmation endpoint when it is disabled.
@@ -83,7 +83,7 @@ for direct visits to React pages.
 
 `render.yaml` defines one free web service and one free PostgreSQL database.
 Connect this repository in Render and create a Blueprint from the file. During
-setup, Render asks for `ADMIN_EMAIL` and `ADMIN_PASSWORD`; use submission-only
+setup, Render asks for `ADMIN_EMAIL` and `ADMIN_PASSWORD`; use deployment
 credentials and share them privately with the evaluator.
 
 The Blueprint automatically:
@@ -96,9 +96,9 @@ The Blueprint automatically:
 - checks application and database readiness at `/api/health`.
 
 Render's free PostgreSQL instances currently expire after 30 days, so create the
-live demo within 30 days of the submission review (or choose a paid database).
+live deployment within 30 days of the evaluation (or choose a paid database).
 
-Do not enter Razorpay keys for the submission demo. To turn the project into a
+Do not enter Razorpay keys for the demo deployment. To turn the project into a
 real-payment deployment later, set `DEMO_MODE=false`, build with
 `VITE_ENABLE_DEMO_CHECKOUT=false`, configure Razorpay credentials, and perform
 a separate payment/security review before accepting customers.

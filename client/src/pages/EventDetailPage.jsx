@@ -68,7 +68,7 @@ export function EventDetailPage() {
     ? selectedTicketType.price * (Number.isFinite(numericQuantity) ? numericQuantity : 0)
     : 0;
 
-  useDocumentTitle(event ? `${event.title} | EventFlow` : "Event | EventFlow");
+  useDocumentTitle(event ? `${event.title} | Event Management Platform` : "Event | Event Management Platform");
 
   useEffect(() => {
     async function loadEvent() {

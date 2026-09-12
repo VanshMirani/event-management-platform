@@ -10,7 +10,7 @@ import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatDateTime } from "../utils/formatDate.js";
 
 export function AdminCheckInPage() {
-  useDocumentTitle("Admin Check-In | EventFlow");
+  useDocumentTitle("Admin Check-In | Event Management Platform");
 
   const [lookup, setLookup] = useState("");
   const [ticket, setTicket] = useState(null);

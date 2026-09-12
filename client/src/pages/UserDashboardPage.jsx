@@ -4,7 +4,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 
 export function UserDashboardPage() {
-  useDocumentTitle("User Dashboard | EventFlow");
+  useDocumentTitle("User Dashboard | Event Management Platform");
 
   const { currentUser } = useAuth();
 
@@ -16,7 +16,7 @@ export function UserDashboardPage() {
             User dashboard
           </p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-normal sm:text-4xl">
-            Welcome, {currentUser?.name ?? "EventFlow user"}.
+            Welcome, {currentUser?.name ?? "Event Management Platform user"}.
           </h1>
           <p className="mt-3 max-w-2xl text-ink/70">
             {currentUser?.email}

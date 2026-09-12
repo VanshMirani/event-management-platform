@@ -13,7 +13,7 @@ const initialFilters = { status: "", search: "" };
 const pageSize = 20;
 
 export function AdminBookingsPage() {
-  useDocumentTitle("Admin Bookings | EventFlow");
+  useDocumentTitle("Admin Bookings | Event Management Platform");
 
   const [bookings, setBookings] = useState([]);
   const [pagination, setPagination] = useState(null);

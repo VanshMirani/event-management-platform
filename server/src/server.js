@@ -3,7 +3,7 @@ import { env } from "./config/env.js";
 import { prisma } from "./config/db.js";
 
 const server = app.listen(env.PORT, "0.0.0.0", () => {
-  console.log(`EventFlow listening on port ${env.PORT}`);
+  console.log(`Event Management Platform listening on port ${env.PORT}`);
 });
 let isShuttingDown = false;
 

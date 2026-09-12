@@ -1,4 +1,4 @@
-# EventFlow submission requirements
+# Event Management Platform requirements
 
 ## In scope
 
@@ -13,9 +13,9 @@
   cannot renew a session.
 - The repository can run locally and deploy as one web service plus PostgreSQL.
 
-## Submission boundary
+## Deployment boundary
 
-The hosted submission is a demonstration system. It does not accept real
+The hosted deployment is a demonstration system. It does not accept real
 customers or money. Demo checkout is labelled in the UI, is guarded by an
 environment flag on the server, and never opens a payment-provider form.
 

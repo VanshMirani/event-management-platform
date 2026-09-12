@@ -395,7 +395,7 @@ export async function createTicketPdf(ticket) {
     document.on("end", () => resolve(Buffer.concat(chunks)));
     document.on("error", reject);
 
-    document.fontSize(22).text("EventFlow Ticket", { align: "center" });
+    document.fontSize(22).text("Event Management Platform Ticket", { align: "center" });
     document.moveDown();
     document.fontSize(16).text(ticket.event?.title ?? "Event");
     document.moveDown(0.5);

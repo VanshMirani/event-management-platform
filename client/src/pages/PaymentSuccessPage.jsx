@@ -15,7 +15,7 @@ export function PaymentSuccessPage() {
     bookingId ? "" : "No booking was provided, so payment confirmation could not be verified."
   );
 
-  useDocumentTitle(booking ? "Booking Confirmed | EventFlow" : "Payment Status | EventFlow");
+  useDocumentTitle(booking ? "Booking Confirmed | Event Management Platform" : "Payment Status | Event Management Platform");
 
   const loadBooking = useCallback(async () => {
     if (!bookingId) {

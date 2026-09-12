@@ -1,4 +1,6 @@
 databases:
+  # Immutable Blueprint resource ID; the Render display name is
+  # "event-management-platform-db".
   - name: eventflow-db
     databaseName: eventflow
     user: eventflow
@@ -7,7 +9,7 @@ databases:
 
 services:
   - type: web
-    name: eventflow-demo
+    name: event-management-platform
     runtime: node
     plan: free
     buildCommand: npm ci --include=dev && npm run build
@@ -31,7 +33,7 @@ services:
       - key: VITE_ENABLE_DEMO_CHECKOUT
         value: "true"
       - key: ADMIN_NAME
-        value: Demo Admin
+        value: Event Management Platform Admin
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD

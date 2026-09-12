@@ -14,7 +14,7 @@ export function AdminPaymentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useDocumentTitle("Admin Payment Detail | EventFlow");
+  useDocumentTitle("Admin Payment Detail | Event Management Platform");
 
   const loadPayment = useCallback(async () => {
     setIsLoading(true);

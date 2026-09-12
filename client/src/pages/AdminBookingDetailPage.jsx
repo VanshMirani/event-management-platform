@@ -14,7 +14,7 @@ export function AdminBookingDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useDocumentTitle("Admin Booking Detail | EventFlow");
+  useDocumentTitle("Admin Booking Detail | Event Management Platform");
 
   const loadBooking = useCallback(async () => {
     setIsLoading(true);

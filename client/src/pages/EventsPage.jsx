@@ -5,7 +5,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 
 export function EventsPage() {
-  useDocumentTitle("Events | EventFlow");
+  useDocumentTitle("Events | Event Management Platform");
 
   const [events, setEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");

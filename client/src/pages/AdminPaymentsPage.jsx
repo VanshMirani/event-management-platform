@@ -14,7 +14,7 @@ const initialFilters = { status: "", provider: "", search: "" };
 const pageSize = 20;
 
 export function AdminPaymentsPage() {
-  useDocumentTitle("Admin Payments | EventFlow");
+  useDocumentTitle("Admin Payments | Event Management Platform");
 
   const [payments, setPayments] = useState([]);
   const [pagination, setPagination] = useState(null);
