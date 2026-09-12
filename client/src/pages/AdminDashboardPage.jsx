@@ -13,49 +13,42 @@ const dashboardCards = [
   {
     id: "users",
     title: "Users",
-    status: "Live",
-    body: "Review platform users and block or unblock accounts.",
+    body: "Assign User or Admin access and manage account availability.",
     to: "/admin/users"
   },
   {
     id: "categories",
     title: "Categories",
-    status: "Live",
-    body: "Create, edit, and delete event discovery categories.",
+    body: "Organize the categories visitors use to discover events.",
     to: "/admin/categories"
   },
   {
     id: "events",
     title: "Events",
-    status: "Live",
-    body: "Create, edit, delete, publish, and unpublish events.",
+    body: "Edit schedules, details, visibility, and ticket inventory.",
     to: "/admin/events"
   },
   {
     id: "create-event",
     title: "Create event",
-    status: "Live",
-    body: "Open the event form and publish a new experience.",
+    body: "Add an event and prepare its ticket types for publishing.",
     to: "/admin/events/create"
   },
   {
     id: "bookings",
     title: "Bookings",
-    status: "Live",
-    body: "Review pending, confirmed, and failed booking records.",
+    body: "Review reservations and their current confirmation status.",
     to: "/admin/bookings"
   },
   {
     id: "payments",
     title: "Payments",
-    status: "Live",
-    body: "Review payment records, including clearly identified demo confirmations.",
+    body: "Review Razorpay Test Mode and free-booking payment records.",
     to: "/admin/payments"
   },
   {
     id: "check-in",
     title: "Check-in",
-    status: "Live",
     body: "Verify QR tickets and mark attendees as checked in.",
     to: "/admin/check-in"
   }
@@ -90,19 +83,19 @@ export function AdminDashboardPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-16">
+      <section className="site-shell py-10 lg:py-16">
         <AdminNav />
 
         <div className="hero-panel mt-8 rounded-lg p-6">
           <p className="text-sm font-extrabold uppercase tracking-wide text-cyan">
-            Admin dashboard
+            Administration
           </p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-normal sm:text-4xl">
             Welcome back, {currentUser?.name ?? "admin"}.
           </h1>
           <p className="mt-3 max-w-2xl text-ink/70">
-            Manage events, bookings, users, and platform operations from this
-            workspace.
+            Manage the event catalog, reservations, access, payments, and venue
+            entry from one place.
           </p>
         </div>
 
@@ -114,18 +107,11 @@ export function AdminDashboardPage() {
               key={card.title}
               to={card.to}
             >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-extrabold uppercase tracking-wide text-mint">
-                  {card.title}
-                </p>
-                <span className="rounded-lg border border-mint/20 bg-mint/10 px-3 py-1 text-xs font-extrabold text-mint">
-                  {card.status}
-                </span>
-              </div>
-              <p className="mt-3 text-lg font-bold text-ink">{card.title}</p>
+              <h2 className="text-lg font-extrabold text-ink">{card.title}</h2>
               <p className="mt-2 text-sm leading-6 text-ink/65">
                 {card.body}
               </p>
+              <p className="mt-4 text-sm font-extrabold text-cyan">Open section →</p>
             </Link>
           ))}
         </div>
@@ -134,7 +120,7 @@ export function AdminDashboardPage() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="section-kicker">
-                Live operations
+                Operational overview
               </p>
               <h2 className="mt-2 text-2xl font-extrabold tracking-normal text-ink">
                 Platform snapshot
@@ -185,7 +171,7 @@ export function AdminDashboardPage() {
                   <p className="mt-2 text-3xl font-extrabold text-ink">
                     {stats.totalBookings}
                   </p>
-                  <p className="mt-1 text-xs font-bold text-ink/50">
+                  <p className="mt-1 text-xs font-bold text-ink/60">
                     {stats.confirmedBookings} confirmed, {stats.pendingBookings} pending
                   </p>
                 </div>
@@ -196,7 +182,7 @@ export function AdminDashboardPage() {
                   <p className="mt-2 text-3xl font-extrabold text-ink">
                     {formatCurrency(stats.totalConfirmedValue)}
                   </p>
-                  <p className="mt-1 text-xs font-bold text-ink/50">
+                  <p className="mt-1 text-xs font-bold text-ink/60">
                     {stats.successfulPayments} successful confirmations
                   </p>
                 </div>

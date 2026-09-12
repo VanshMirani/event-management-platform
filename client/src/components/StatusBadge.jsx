@@ -1,3 +1,5 @@
+import { formatStatusLabel } from "../utils/formatStatusLabel.js";
+
 const statusStyles = {
   ACTIVE: "border-mint/25 bg-mint/10 text-mint",
   BLOCKED: "border-ember/25 bg-ember/10 text-ember",
@@ -11,17 +13,22 @@ const statusStyles = {
   VALID: "border-cyan/30 bg-cyan/10 text-cyan",
   INACTIVE: "border-slate-300 bg-slate-100 text-slate-600",
   REFUNDED: "border-aurora/25 bg-aurora/10 text-aurora",
-  CANCELLED: "border-ember/25 bg-ember/10 text-ember"
+  CANCELLED: "border-ember/25 bg-ember/10 text-ember",
+  COMPLETED: "border-slate-300 bg-slate-100 text-slate-700",
+  CREATED: "border-cyan/30 bg-cyan/10 text-cyan"
 };
 
 export function StatusBadge({ status, className = "" }) {
-  const style = statusStyles[status] ?? "border-slate-300 bg-slate-100 text-slate-600";
+  const normalizedStatus = String(status ?? "").trim().toUpperCase();
+  const style =
+    statusStyles[normalizedStatus] ??
+    "border-slate-300 bg-slate-100 text-slate-600";
 
   return (
     <span
-      className={`inline-flex items-center rounded-lg border px-3 py-1 text-xs font-extrabold uppercase tracking-wide ${style} ${className}`}
+      className={`inline-flex items-center rounded-lg border px-3 py-1 text-xs font-extrabold tracking-wide ${style} ${className}`}
     >
-      {status}
+      {formatStatusLabel(status)}
     </span>
   );
 }

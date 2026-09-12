@@ -30,6 +30,7 @@ const eventDescribe = hasDatabaseUrl ? describe : describe.skip;
 const createdEmails = new Set();
 const createdCategoryIds = new Set();
 const createdEventIds = new Set();
+const createdTicketTypeIds = new Set();
 const password = "StrongPass123";
 
 function uniqueEmail(prefix) {
@@ -87,6 +88,7 @@ function eventPayload(categoryId, overrides = {}) {
 
   return {
     title: `Event Test ${randomUUID()}`,
+    shortDescription: "A concise event summary for discovery cards.",
     description: "Created by event API tests",
     categoryId,
     eventType: "OFFLINE",
@@ -117,6 +119,7 @@ async function createEventRecord({
     data: {
       title,
       slug: `event-${randomUUID()}`,
+      shortDescription: "A public event summary.",
       description: "Created directly by event tests",
       status,
       type: "OFFLINE",
@@ -138,8 +141,37 @@ async function createEventRecord({
   return event;
 }
 
+async function createActiveTicketType(eventId) {
+  const ticketType = await prisma.ticketType.create({
+    data: {
+      eventId,
+      name: `General Admission ${randomUUID()}`,
+      description: "Admission for event publication tests",
+      price: "499.00",
+      currency: "INR",
+      totalQuantity: 100,
+      availableQuantity: 100,
+      maxPerBooking: 5,
+      isActive: true
+    }
+  });
+
+  createdTicketTypeIds.add(ticketType.id);
+  return ticketType;
+}
+
 eventDescribe("event management", () => {
   after(async () => {
+    if (createdTicketTypeIds.size > 0) {
+      await prisma.ticketType.deleteMany({
+        where: {
+          id: {
+            in: [...createdTicketTypeIds]
+          }
+        }
+      });
+    }
+
     if (createdEventIds.size > 0) {
       await prisma.event.deleteMany({
         where: {
@@ -189,6 +221,10 @@ eventDescribe("event management", () => {
     assert.equal(response.body.data.event.organizerId, admin.id);
     assert.equal(response.body.data.event.status, "DRAFT");
     assert.equal(response.body.data.event.capacity, 250);
+    assert.equal(
+      response.body.data.event.shortDescription,
+      "A concise event summary for discovery cards."
+    );
     assert.ok(response.body.data.event.slug);
   });
 
@@ -215,6 +251,7 @@ eventDescribe("event management", () => {
       .expect(201);
     const eventId = createResponse.body.data.event.id;
     createdEventIds.add(eventId);
+    await createActiveTicketType(eventId);
 
     const response = await agent
       .patch(`/api/admin/events/${eventId}`)
@@ -246,11 +283,72 @@ eventDescribe("event management", () => {
       .expect(201);
     const eventId = createResponse.body.data.event.id;
     createdEventIds.add(eventId);
+    await createActiveTicketType(eventId);
 
     const response = await agent.patch(`/api/admin/events/${eventId}/publish`).expect(200);
 
     assert.equal(response.body.data.event.status, "PUBLISHED");
   });
+
+  it("does not publish an event before an active ticket type is added", async () => {
+    const admin = await createUser({
+      role: "ADMIN",
+      email: uniqueEmail("event-without-tickets-admin")
+    });
+    const category = await createCategory();
+    const agent = await loginAgent(admin);
+    const createResponse = await agent
+      .post("/api/admin/events")
+      .send(eventPayload(category.id))
+      .expect(201);
+    const eventId = createResponse.body.data.event.id;
+    createdEventIds.add(eventId);
+
+    const response = await agent
+      .patch(`/api/admin/events/${eventId}/publish`)
+      .expect(409);
+
+    assert.match(response.body.message, /active ticket type/i);
+  });
+
+  for (const terminalStatus of ["CANCELLED", "COMPLETED"]) {
+    it(`${terminalStatus.toLowerCase()} events keep their terminal status`, async () => {
+      const admin = await createUser({
+        role: "ADMIN",
+        email: uniqueEmail(`${terminalStatus.toLowerCase()}-event-admin`)
+      });
+      const category = await createCategory();
+      const event = await createEventRecord({
+        admin,
+        category,
+        status: terminalStatus
+      });
+      const agent = await loginAgent(admin);
+
+      const contentResponse = await agent
+        .patch(`/api/admin/events/${event.id}`)
+        .send({ shortDescription: `Updated ${terminalStatus.toLowerCase()} event summary.` })
+        .expect(200);
+      assert.equal(contentResponse.body.data.event.status, terminalStatus);
+
+      await agent
+        .patch(`/api/admin/events/${event.id}`)
+        .send({ status: "DRAFT" })
+        .expect(409);
+      await agent.patch(`/api/admin/events/${event.id}/publish`).expect(409);
+      await agent.patch(`/api/admin/events/${event.id}/unpublish`).expect(409);
+
+      const savedEvent = await prisma.event.findUnique({
+        where: { id: event.id },
+        select: { status: true, shortDescription: true }
+      });
+      assert.equal(savedEvent.status, terminalStatus);
+      assert.equal(
+        savedEvent.shortDescription,
+        `Updated ${terminalStatus.toLowerCase()} event summary.`
+      );
+    });
+  }
 
   it("keeps published events upcoming when publish races a start-date update", async () => {
     const admin = await createUser({ role: "ADMIN", email: uniqueEmail("event-race-admin") });
@@ -262,6 +360,7 @@ eventDescribe("event management", () => {
       .expect(201);
     const eventId = createResponse.body.data.event.id;
     createdEventIds.add(eventId);
+    await createActiveTicketType(eventId);
     const pastStart = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const pastEnd = new Date(pastStart.getTime() + 60 * 60 * 1000);
 
@@ -372,6 +471,7 @@ eventDescribe("event management", () => {
 
     assert.equal(response.body.data.event.id, publishedEvent.id);
     assert.equal(response.body.data.event.status, "PUBLISHED");
+    assert.equal(response.body.data.event.shortDescription, "A public event summary.");
     assert.equal(response.body.data.event.onlineUrl, null);
     assert.equal(Object.hasOwn(response.body.data.event.organizer, "email"), false);
   });

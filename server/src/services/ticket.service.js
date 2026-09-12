@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { prisma } from "../config/db.js";
+import { env } from "../config/env.js";
 import { createHttpError } from "../utils/httpError.js";
 
 const SAFE_USER_SELECT = {
@@ -125,6 +126,11 @@ function hashQrToken(qrToken) {
   return crypto.createHash("sha256").update(qrToken).digest("hex");
 }
 
+function createCheckInUrl(qrToken) {
+  const appUrl = env.PUBLIC_APP_URL.replace(/\/+$/, "");
+  return `${appUrl}/admin/check-in?token=${encodeURIComponent(qrToken)}`;
+}
+
 function ensureEventAcceptsCheckIn(ticket) {
   if (ticket.event?.status !== "PUBLISHED") {
     throw createHttpError(400, "Tickets can only be checked in for published events");
@@ -220,7 +226,7 @@ export async function generateTicketsForBooking(bookingId, client = prisma) {
   for (const item of booking.items) {
     for (let index = 0; index < item.quantity; index += 1) {
       const qrToken = createQrToken();
-      const qrCodeUrl = await QRCode.toDataURL(qrToken, {
+      const qrCodeUrl = await QRCode.toDataURL(createCheckInUrl(qrToken), {
         errorCorrectionLevel: "M",
         margin: 1,
         width: 280
@@ -388,18 +394,36 @@ export async function markTicketUsedForCheckIn({ ticketCode, qrToken }) {
 
 export async function createTicketPdf(ticket) {
   return new Promise((resolve, reject) => {
-    const document = new PDFDocument({ margin: 48, size: "A4" });
+    const document = new PDFDocument({
+      info: {
+        Author: "EventFlow",
+        Subject: `Ticket ${ticket.ticketCode}`,
+        Title: `${ticket.event?.title ?? "Event"} ticket`
+      },
+      margin: 0,
+      size: "A4"
+    });
     const chunks = [];
+    const pageWidth = document.page.width;
+    const ink = "#10182B";
+    const muted = "#5C6475";
+    const violet = "#5B3DF5";
+    const cyan = "#24B6D2";
+    const cardX = 42;
+    const cardY = 104;
+    const cardWidth = pageWidth - cardX * 2;
+    const contentX = cardX + 28;
+    const contentWidth = cardWidth - 56;
 
     document.on("data", (chunk) => chunks.push(chunk));
     document.on("end", () => resolve(Buffer.concat(chunks)));
     document.on("error", reject);
 
-    document.fontSize(22).text("EventFlow Ticket", { align: "center" });
-    document.moveDown();
-    document.fontSize(16).text(ticket.event?.title ?? "Event");
-    document.moveDown(0.5);
-    document.fontSize(11).text(`Date: ${new Date(ticket.event?.startsAt).toLocaleString("en-IN")}`);
+    const eventDate = new Intl.DateTimeFormat("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Asia/Kolkata"
+    }).format(new Date(ticket.event?.startsAt));
     const physicalLocation = [
       ticket.event?.venueName,
       ticket.event?.address,
@@ -412,31 +436,163 @@ export async function createTicketPdf(ticket) {
     const eventLocation =
       ticket.event?.type === "ONLINE"
         ? ticket.event?.onlineUrl || "Online event"
-        : [physicalLocation, ticket.event?.type === "HYBRID" ? ticket.event?.onlineUrl : null]
-            .filter(Boolean)
-            .join(" / ") || "To be announced";
+        : ticket.event?.type === "HYBRID"
+          ? `${physicalLocation || "Venue to be announced"} - online access is also available`
+          : physicalLocation || "Venue to be announced";
 
-    document.text(`Location: ${eventLocation}`);
-    document.moveDown();
-    document.text(`Attendee: ${ticket.user?.name ?? "Guest"}`);
-    document.text(`Email: ${ticket.user?.email ?? "-"}`);
-    document.text(`Ticket code: ${ticket.ticketCode}`);
-    document.text(`Ticket type: ${ticket.ticketType?.name ?? "-"}`);
-    document.text(`Status: ${ticket.status}`);
-    document.moveDown();
+    document.rect(0, 0, pageWidth, document.page.height).fill("#F4F6FB");
+    document.rect(0, 0, pageWidth, 154).fill(violet);
+    document
+      .fillColor("#FFFFFF")
+      .font("Helvetica-Bold")
+      .fontSize(24)
+      .text("EventFlow", 42, 34);
+    document
+      .fillColor("#E8F9FC")
+      .font("Helvetica")
+      .fontSize(10)
+      .text("YOUR EVENT. YOUR TICKET.", 42, 68, { characterSpacing: 1.1 });
+    document.roundedRect(pageWidth - 132, 35, 90, 28, 14).fill(cyan);
+    document
+      .fillColor("#FFFFFF")
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .text("ADMIT ONE", pageWidth - 132, 45, { align: "center", width: 90 });
 
-    if (ticket.qrCodeUrl) {
-      document.image(dataUrlToBuffer(ticket.qrCodeUrl), {
-        fit: [180, 180],
-        align: "center"
+    document.roundedRect(cardX, cardY, cardWidth, 684, 14).fill("#FFFFFF");
+
+    let cursorY = cardY + 28;
+    document
+      .fillColor(violet)
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .text("EVENT ADMISSION", contentX, cursorY, { characterSpacing: 1.2 });
+    cursorY += 19;
+    document
+      .fillColor(ink)
+      .font("Helvetica-Bold")
+      .fontSize(23)
+      .text(ticket.event?.title ?? "Event", contentX, cursorY, {
+        lineGap: 2,
+        width: contentWidth
       });
+    cursorY = document.y + 17;
+
+    document.fillColor(muted).font("Helvetica-Bold").fontSize(8).text("DATE AND TIME", contentX, cursorY);
+    document
+      .fillColor(ink)
+      .font("Helvetica")
+      .fontSize(11)
+      .text(`${eventDate} IST`, contentX, cursorY + 13, { width: contentWidth });
+    cursorY += 43;
+    document.fillColor(muted).font("Helvetica-Bold").fontSize(8).text("LOCATION", contentX, cursorY);
+    document
+      .fillColor(ink)
+      .font("Helvetica")
+      .fontSize(10.5)
+      .text(eventLocation, contentX, cursorY + 13, {
+        ellipsis: true,
+        height: 31,
+        lineGap: 2,
+        width: contentWidth
+      });
+    cursorY += 58;
+
+    document.moveTo(contentX, cursorY).lineTo(contentX + contentWidth, cursorY).lineWidth(1).stroke("#E3E7F0");
+    cursorY += 22;
+
+    const detailColumnWidth = (contentWidth - 20) / 2;
+    const drawDetail = (label, value, x, y) => {
+      document.fillColor(muted).font("Helvetica-Bold").fontSize(8).text(label, x, y);
+      document
+        .fillColor(ink)
+        .font("Helvetica")
+        .fontSize(10.5)
+        .text(value || "-", x, y + 13, {
+          ellipsis: true,
+          height: 28,
+          width: detailColumnWidth
+        });
+    };
+
+    drawDetail("ATTENDEE", ticket.user?.name ?? "Guest", contentX, cursorY);
+    drawDetail("TICKET TYPE", ticket.ticketType?.name ?? "-", contentX + detailColumnWidth + 20, cursorY);
+    cursorY += 50;
+    drawDetail("EMAIL", ticket.user?.email ?? "-", contentX, cursorY);
+    drawDetail("BOOKING", ticket.booking?.bookingNumber ?? "-", contentX + detailColumnWidth + 20, cursorY);
+    cursorY += 49;
+
+    const statusLabel = ticket.status === "VALID" ? "VALID FOR ENTRY" : ticket.status;
+    const statusWidth = Math.max(82, document.widthOfString(statusLabel) + 24);
+    document.roundedRect(contentX, cursorY, statusWidth, 24, 12).fill(ticket.status === "VALID" ? "#DDF7EA" : "#EEF0F5");
+    document
+      .fillColor(ticket.status === "VALID" ? "#16734A" : muted)
+      .font("Helvetica-Bold")
+      .fontSize(8)
+      .text(statusLabel, contentX, cursorY + 8, { align: "center", width: statusWidth });
+    cursorY += 38;
+
+    const isEntryReady = ticket.status === "VALID";
+
+    if (ticket.qrCodeUrl && isEntryReady) {
+      const qrSize = 170;
+      const qrX = (pageWidth - qrSize) / 2;
+      document.roundedRect(qrX - 8, cursorY - 8, qrSize + 16, qrSize + 16, 10).fill("#F7F8FC");
+      document.image(dataUrlToBuffer(ticket.qrCodeUrl), qrX, cursorY, {
+        fit: [qrSize, qrSize]
+      });
+      cursorY += qrSize + 13;
+    } else {
+      document.roundedRect(contentX, cursorY, contentWidth, 86, 10).fill("#F4F6FB");
+      document
+        .fillColor(ink)
+        .font("Helvetica-Bold")
+        .fontSize(12)
+        .text("ENTRY UNAVAILABLE", contentX, cursorY + 20, {
+          align: "center",
+          width: contentWidth
+        });
+      document
+        .fillColor(muted)
+        .font("Helvetica")
+        .fontSize(9)
+        .text(
+          ticket.status === "USED"
+            ? "This ticket has already been checked in and cannot be accepted again."
+            : `This ticket is ${ticket.status.toLowerCase()} and is not valid for entry.`,
+          contentX + 24,
+          cursorY + 43,
+          { align: "center", width: contentWidth - 48 }
+        );
+      cursorY += 103;
     }
 
-    document.moveDown();
-    document.fontSize(9).fillColor("#666666").text(
-      "Present this ticket at check-in. The QR token contains no personal details.",
-      { align: "center" }
-    );
+    document
+      .fillColor(muted)
+      .font("Helvetica-Bold")
+      .fontSize(8)
+      .text("TICKET CODE", contentX, cursorY, { align: "center", width: contentWidth });
+    document
+      .fillColor(ink)
+      .font("Courier-Bold")
+      .fontSize(9)
+      .text(ticket.ticketCode, contentX, cursorY + 13, {
+        align: "center",
+        width: contentWidth
+      });
+    cursorY += 42;
+    document
+      .fillColor(muted)
+      .font("Helvetica")
+      .fontSize(8.5)
+      .text(
+        isEntryReady
+          ? "Show this QR code at check-in. It opens EventFlow verification, contains no personal details, and can be accepted only once."
+          : "Keep this document for your records. It cannot be used for event entry.",
+        contentX,
+        cursorY,
+        { align: "center", lineGap: 2, width: contentWidth }
+      );
     document.end();
   });
 }

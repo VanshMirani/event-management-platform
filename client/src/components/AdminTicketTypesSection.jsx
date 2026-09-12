@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createAdminTicketType,
   deleteAdminTicketType,
@@ -93,6 +93,7 @@ function toPayload(form, eventId = null) {
 }
 
 export function AdminTicketTypesSection({ eventId }) {
+  const formHeadingRef = useRef(null);
   const [ticketTypes, setTicketTypes] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editingTicketTypeId, setEditingTicketTypeId] = useState("");
@@ -101,6 +102,7 @@ export function AdminTicketTypesSection({ eventId }) {
   const [deletingTicketTypeId, setDeletingTicketTypeId] = useState("");
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const loadTicketTypes = useCallback(async () => {
     setIsLoading(true);
@@ -121,6 +123,8 @@ export function AdminTicketTypesSection({ eventId }) {
 
   function updateField(event) {
     const { name, value } = event.target;
+    setFormError("");
+    setSuccessMessage("");
     setForm((current) => ({
       ...current,
       [name]: value
@@ -131,6 +135,8 @@ export function AdminTicketTypesSection({ eventId }) {
     setEditingTicketTypeId(ticketType.id);
     setForm(toFormState(ticketType));
     setFormError("");
+    setSuccessMessage("");
+    window.requestAnimationFrame(() => formHeadingRef.current?.focus());
   }
 
   function resetForm() {
@@ -162,9 +168,11 @@ export function AdminTicketTypesSection({ eventId }) {
             ticketType.id === updatedTicketType.id ? updatedTicketType : ticketType
           )
         );
+        setSuccessMessage("Ticket type updated.");
       } else {
         const createdTicketType = await createAdminTicketType(toPayload(form, eventId));
         setTicketTypes((currentTicketTypes) => [...currentTicketTypes, createdTicketType]);
+        setSuccessMessage("Ticket type added.");
       }
 
       resetForm();
@@ -194,8 +202,10 @@ export function AdminTicketTypesSection({ eventId }) {
       if (editingTicketTypeId === ticketType.id) {
         resetForm();
       }
+      setSuccessMessage("Ticket type deleted.");
     } catch (deleteError) {
       setFormError(deleteError.message);
+      window.requestAnimationFrame(() => formHeadingRef.current?.focus());
     } finally {
       setDeletingTicketTypeId("");
     }
@@ -210,7 +220,11 @@ export function AdminTicketTypesSection({ eventId }) {
         <p className="section-kicker">
           Ticket types
         </p>
-        <h2 className="mt-2 text-2xl font-extrabold tracking-normal text-ink">
+        <h2
+          className="mt-2 text-2xl font-extrabold tracking-normal text-ink outline-none"
+          ref={formHeadingRef}
+          tabIndex="-1"
+        >
           {editingTicketTypeId ? "Edit ticket type" : "Add ticket type"}
         </h2>
 
@@ -222,8 +236,10 @@ export function AdminTicketTypesSection({ eventId }) {
             <input
               className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
               id="ticket-name"
+              maxLength="100"
               name="name"
               onChange={updateField}
+              required
               type="text"
               value={form.name}
             />
@@ -236,6 +252,7 @@ export function AdminTicketTypesSection({ eventId }) {
             <textarea
               className="mt-2 min-h-[6rem] w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
               id="ticket-description"
+              maxLength="500"
               name="description"
               onChange={updateField}
               value={form.description}
@@ -252,6 +269,7 @@ export function AdminTicketTypesSection({ eventId }) {
               min="0"
               name="price"
               onChange={updateField}
+              required
               step="0.01"
               type="number"
               value={form.price}
@@ -270,7 +288,9 @@ export function AdminTicketTypesSection({ eventId }) {
               type="text"
               value={form.currency}
             />
-            <p className="mt-1 text-xs font-semibold text-ink/50">INR only in this demo.</p>
+            <p className="mt-1 text-xs font-semibold text-ink/60">
+              Prices are currently supported in INR.
+            </p>
           </div>
 
           <div>
@@ -283,6 +303,8 @@ export function AdminTicketTypesSection({ eventId }) {
               min="1"
               name="totalQuantity"
               onChange={updateField}
+              required
+              step="1"
               type="number"
               value={form.totalQuantity}
             />
@@ -298,6 +320,8 @@ export function AdminTicketTypesSection({ eventId }) {
               min="1"
               name="maxPerUser"
               onChange={updateField}
+              required
+              step="1"
               type="number"
               value={form.maxPerUser}
             />
@@ -342,15 +366,21 @@ export function AdminTicketTypesSection({ eventId }) {
               onChange={updateField}
               value={form.status}
             >
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="INACTIVE">INACTIVE</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
             </select>
           </div>
         </div>
 
         {formError ? (
-          <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember">
+          <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember" role="alert">
             {formError}
+          </p>
+        ) : null}
+
+        {successMessage ? (
+          <p className="mt-4 rounded-lg border border-mint/20 bg-mint/10 px-4 py-3 text-sm font-semibold text-mint" role="status">
+            {successMessage}
           </p>
         ) : null}
 
@@ -379,7 +409,7 @@ export function AdminTicketTypesSection({ eventId }) {
           <h2 className="text-xl font-extrabold tracking-normal text-ink">
             Ticket type list
           </h2>
-          <span className="text-sm font-bold text-ink/55">{ticketTypes.length} total</span>
+          <span className="text-sm font-bold text-ink/65">{ticketTypes.length} total</span>
         </div>
 
         {isLoading ? (
@@ -423,6 +453,7 @@ export function AdminTicketTypesSection({ eventId }) {
 
                   <div className="flex flex-wrap gap-2">
                     <button
+                      aria-label={`Edit ${ticketType.name} ticket type`}
                       className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
                       onClick={() => startEditing(ticketType)}
                       type="button"
@@ -430,7 +461,8 @@ export function AdminTicketTypesSection({ eventId }) {
                       Edit
                     </button>
                     <button
-                      className="danger-button px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
+                      aria-label={`Delete ${ticketType.name} ticket type`}
+                      className="danger-button px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/60"
                       disabled={isDeleting}
                       onClick={() => handleDelete(ticketType)}
                       type="button"

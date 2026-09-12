@@ -13,7 +13,7 @@ export async function getHealth(_req, res) {
         uptime: process.uptime(),
         timestamp: new Date().toISOString()
       },
-      "Event Management API is healthy"
+      "EventFlow API is healthy"
     );
   } catch {
     return sendError(res, "Service is not ready", 503, {

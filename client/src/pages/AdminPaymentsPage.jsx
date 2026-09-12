@@ -7,11 +7,24 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
 import { formatDateTime } from "../utils/formatDate.js";
+import { formatStatusLabel } from "../utils/formatStatusLabel.js";
 
 const statusOptions = ["", "CREATED", "SUCCESS", "FAILED", "REFUNDED"];
-const providerOptions = ["", "demo", "free", "razorpay"];
+const providerOptions = ["", "free", "razorpay"];
 const initialFilters = { status: "", provider: "", search: "" };
 const pageSize = 20;
+
+function formatProvider(provider) {
+  if (provider === "razorpay") {
+    return "Razorpay Test Mode";
+  }
+
+  if (provider === "free") {
+    return "Free booking";
+  }
+
+  return provider || "Not recorded";
+}
 
 export function AdminPaymentsPage() {
   useDocumentTitle("Admin Payments | EventFlow");
@@ -70,7 +83,7 @@ export function AdminPaymentsPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <AdminNav />
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
@@ -83,16 +96,18 @@ export function AdminPaymentsPage() {
             </h1>
           </div>
           <p className="surface-card rounded-lg px-4 py-2 text-sm font-bold text-ink/70">
-            {pagination ? `${pagination.total} payments` : `${payments.length} payments`}
+            {`${pagination?.total ?? payments.length} ${
+              (pagination?.total ?? payments.length) === 1 ? "payment" : "payments"
+            }`}
           </p>
         </div>
 
         <form
-          className="surface-card mt-6 grid gap-3 rounded-lg p-4 md:grid-cols-[1fr_180px_180px_auto_auto]"
+          className="surface-card mt-6 grid gap-3 rounded-lg p-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_180px_auto_auto]"
           onSubmit={handleSubmit}
         >
           <input
-            className="rounded-lg border border-ink/15 px-4 py-3 text-sm text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+            className="min-w-0 rounded-lg border border-ink/15 px-4 py-3 text-sm text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15 md:col-span-2 lg:col-span-1"
             aria-label="Search payments"
             name="search"
             onChange={updateFilter}
@@ -109,7 +124,7 @@ export function AdminPaymentsPage() {
           >
             {statusOptions.map((status) => (
               <option key={status || "ALL"} value={status}>
-                {status || "All statuses"}
+                {status ? formatStatusLabel(status) : "All statuses"}
               </option>
             ))}
           </select>
@@ -122,7 +137,7 @@ export function AdminPaymentsPage() {
           >
             {providerOptions.map((provider) => (
               <option key={provider || "ALL"} value={provider}>
-                {provider || "All providers"}
+                {provider ? formatProvider(provider) : "All providers"}
               </option>
             ))}
           </select>
@@ -160,30 +175,34 @@ export function AdminPaymentsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
-                <thead className="bg-linen text-xs font-bold uppercase tracking-wide text-ink/55">
+                <thead className="bg-linen text-xs font-bold uppercase tracking-wide text-ink/65">
                   <tr>
-                    <th className="px-4 py-3">Payment</th>
-                    <th className="px-4 py-3">Booking</th>
-                    <th className="px-4 py-3">User</th>
-                    <th className="px-4 py-3">Event</th>
-                    <th className="px-4 py-3">Provider</th>
-                    <th className="px-4 py-3">Amount</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Paid/Created</th>
-                    <th className="px-4 py-3">Action</th>
+                    <th className="px-4 py-3" scope="col">Payment</th>
+                    <th className="px-4 py-3" scope="col">Booking</th>
+                    <th className="px-4 py-3" scope="col">User</th>
+                    <th className="px-4 py-3" scope="col">Event</th>
+                    <th className="px-4 py-3" scope="col">Provider</th>
+                    <th className="px-4 py-3" scope="col">Amount</th>
+                    <th className="px-4 py-3" scope="col">Status</th>
+                    <th className="px-4 py-3" scope="col">Paid/Created</th>
+                    <th className="px-4 py-3" scope="col">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink/10">
                   {payments.map((payment) => (
                     <tr key={payment.id}>
-                      <td className="px-4 py-4 font-bold text-ink">{payment.id}</td>
+                      <td className="max-w-[190px] break-all px-4 py-4 font-bold text-ink">
+                        {payment.id}
+                      </td>
                       <td className="px-4 py-4 text-ink/70">{payment.bookingCode}</td>
                       <td className="px-4 py-4 text-ink/70">
                         <span className="block font-bold text-ink">{payment.user?.name}</span>
                         <span>{payment.user?.email}</span>
                       </td>
                       <td className="px-4 py-4 text-ink/70">{payment.event?.title}</td>
-                      <td className="px-4 py-4 text-ink/70">{payment.provider}</td>
+                      <td className="px-4 py-4 text-ink/70">
+                        {formatProvider(payment.provider)}
+                      </td>
                       <td className="px-4 py-4 font-bold text-ink">
                         {formatCurrency(payment.amount, payment.currency)}
                       </td>
@@ -195,6 +214,7 @@ export function AdminPaymentsPage() {
                       </td>
                       <td className="px-4 py-4">
                         <Link
+                          aria-label={`View payment ${payment.id}`}
                           className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
                           to={`/admin/payments/${payment.id}`}
                         >

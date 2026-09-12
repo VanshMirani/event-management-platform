@@ -6,9 +6,9 @@ function RouteLoadingState() {
     <div className="min-h-screen bg-linen px-5 py-16 text-ink">
       <div className="surface-card mx-auto max-w-3xl rounded-lg p-6">
         <p className="section-kicker">
-          Checking session
+          EventFlow
         </p>
-        <p className="mt-2 text-lg font-bold">Loading your account...</p>
+        <p className="mt-2 text-lg font-bold">Preparing your account...</p>
       </div>
     </div>
   );

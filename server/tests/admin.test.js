@@ -28,6 +28,7 @@ if (hasDatabaseUrl) {
 
 const adminDescribe = hasDatabaseUrl ? describe : describe.skip;
 const createdEmails = new Set();
+const createdUserIds = new Set();
 const createdCategoryNames = new Set();
 const password = "StrongPass123";
 
@@ -56,7 +57,7 @@ async function createUser({
   createdEmails.add(email);
   const passwordHash = await bcrypt.hash(password, 12);
 
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       name,
       email,
@@ -65,6 +66,9 @@ async function createUser({
       status
     }
   });
+
+  createdUserIds.add(user.id);
+  return user;
 }
 
 async function loginAgent(user) {
@@ -87,6 +91,25 @@ adminDescribe("admin core management", () => {
           name: {
             in: [...createdCategoryNames]
           }
+        }
+      });
+    }
+
+    if (createdUserIds.size > 0) {
+      await prisma.auditLog.deleteMany({
+        where: {
+          OR: [
+            {
+              adminId: {
+                in: [...createdUserIds]
+              }
+            },
+            {
+              entityId: {
+                in: [...createdUserIds]
+              }
+            }
+          ]
         }
       });
     }
@@ -124,6 +147,262 @@ adminDescribe("admin core management", () => {
     const response = await agent.get("/api/admin/users").expect(403);
 
     assert.equal(response.body.status, "error");
+  });
+
+  it("admin can block and unblock a user with transactional audit logs", async () => {
+    const admin = await createUser({ email: uniqueEmail("status-admin"), role: "ADMIN" });
+    const user = await createUser({ email: uniqueEmail("status-user") });
+    const agent = await loginAgent(admin);
+
+    const blockedResponse = await agent
+      .patch(`/api/admin/users/${user.id}/status`)
+      .set("User-Agent", "EventFlow admin integration test")
+      .send({ status: "BLOCKED" })
+      .expect(200);
+
+    assert.equal(blockedResponse.body.data.user.status, "BLOCKED");
+    assertDoesNotExposePasswordHash(blockedResponse.body.data.user);
+
+    let auditLogs = await prisma.auditLog.findMany({
+      where: {
+        action: "USER_STATUS_UPDATED",
+        entityId: user.id
+      },
+      orderBy: {
+        createdAt: "asc"
+      }
+    });
+
+    assert.equal(auditLogs.length, 1);
+    assert.equal(auditLogs[0].adminId, admin.id);
+    assert.equal(auditLogs[0].entityType, "User");
+    assert.deepEqual(auditLogs[0].metadata, {
+      previousStatus: "ACTIVE",
+      nextStatus: "BLOCKED"
+    });
+    assert.equal(auditLogs[0].userAgent, "EventFlow admin integration test");
+    assert.ok(auditLogs[0].ipAddress);
+
+    await agent
+      .patch(`/api/admin/users/${user.id}/status`)
+      .send({ status: "BLOCKED" })
+      .expect(200);
+
+    assert.equal(
+      await prisma.auditLog.count({
+        where: {
+          action: "USER_STATUS_UPDATED",
+          entityId: user.id
+        }
+      }),
+      1
+    );
+
+    const activeResponse = await agent
+      .patch(`/api/admin/users/${user.id}/status`)
+      .send({ status: "ACTIVE" })
+      .expect(200);
+
+    assert.equal(activeResponse.body.data.user.status, "ACTIVE");
+    auditLogs = await prisma.auditLog.findMany({
+      where: {
+        action: "USER_STATUS_UPDATED",
+        entityId: user.id
+      },
+      orderBy: {
+        createdAt: "asc"
+      }
+    });
+    assert.equal(auditLogs.length, 2);
+    assert.deepEqual(auditLogs[1].metadata, {
+      previousStatus: "BLOCKED",
+      nextStatus: "ACTIVE"
+    });
+  });
+
+  it("admin can promote and demote a user while reserved roles are rejected", async () => {
+    const admin = await createUser({ email: uniqueEmail("role-admin"), role: "ADMIN" });
+    const user = await createUser({ email: uniqueEmail("role-user") });
+    const agent = await loginAgent(admin);
+
+    const promotedResponse = await agent
+      .patch(`/api/admin/users/${user.id}/role`)
+      .send({ role: "ADMIN" })
+      .expect(200);
+
+    assert.equal(promotedResponse.body.data.user.role, "ADMIN");
+    assertDoesNotExposePasswordHash(promotedResponse.body.data.user);
+
+    await agent
+      .patch(`/api/admin/users/${user.id}/role`)
+      .send({ role: "ADMIN" })
+      .expect(200);
+
+    let auditLogs = await prisma.auditLog.findMany({
+      where: {
+        action: "USER_ROLE_UPDATED",
+        entityId: user.id
+      },
+      orderBy: {
+        createdAt: "asc"
+      }
+    });
+
+    assert.equal(auditLogs.length, 1);
+    assert.equal(auditLogs[0].adminId, admin.id);
+    assert.deepEqual(auditLogs[0].metadata, {
+      previousRole: "USER",
+      nextRole: "ADMIN"
+    });
+
+    const demotedResponse = await agent
+      .patch(`/api/admin/users/${user.id}/role`)
+      .send({ role: "USER" })
+      .expect(200);
+
+    assert.equal(demotedResponse.body.data.user.role, "USER");
+    auditLogs = await prisma.auditLog.findMany({
+      where: {
+        action: "USER_ROLE_UPDATED",
+        entityId: user.id
+      },
+      orderBy: {
+        createdAt: "asc"
+      }
+    });
+    assert.equal(auditLogs.length, 2);
+    assert.deepEqual(auditLogs[1].metadata, {
+      previousRole: "ADMIN",
+      nextRole: "USER"
+    });
+
+    const reservedRoleResponse = await agent
+      .patch(`/api/admin/users/${user.id}/role`)
+      .send({ role: "ORGANIZER" })
+      .expect(400);
+
+    assert.equal(reservedRoleResponse.body.status, "error");
+    assert.equal(reservedRoleResponse.body.message, "Validation failed");
+  });
+
+  it("admin cannot block or demote their own account, while unchanged values are no-ops", async () => {
+    const admin = await createUser({ email: uniqueEmail("self-admin"), role: "ADMIN" });
+    const agent = await loginAgent(admin);
+
+    await agent
+      .patch(`/api/admin/users/${admin.id}/status`)
+      .send({ status: "ACTIVE" })
+      .expect(200);
+    await agent
+      .patch(`/api/admin/users/${admin.id}/role`)
+      .send({ role: "ADMIN" })
+      .expect(200);
+
+    assert.equal(
+      await prisma.auditLog.count({
+        where: {
+          entityId: admin.id,
+          action: {
+            in: ["USER_STATUS_UPDATED", "USER_ROLE_UPDATED"]
+          }
+        }
+      }),
+      0
+    );
+
+    const blockResponse = await agent
+      .patch(`/api/admin/users/${admin.id}/status`)
+      .send({ status: "BLOCKED" })
+      .expect(400);
+    const demoteResponse = await agent
+      .patch(`/api/admin/users/${admin.id}/role`)
+      .send({ role: "USER" })
+      .expect(400);
+
+    assert.match(blockResponse.body.message, /cannot block their own account/i);
+    assert.match(demoteResponse.body.message, /cannot remove their own admin role/i);
+
+    const unchangedAdmin = await prisma.user.findUnique({ where: { id: admin.id } });
+    assert.equal(unchangedAdmin.status, "ACTIVE");
+    assert.equal(unchangedAdmin.role, "ADMIN");
+  });
+
+  it("normal users cannot change another user's status or role", async () => {
+    const normalUser = await createUser({ email: uniqueEmail("mutation-normal") });
+    const target = await createUser({ email: uniqueEmail("mutation-target") });
+    const agent = await loginAgent(normalUser);
+
+    await agent
+      .patch(`/api/admin/users/${target.id}/status`)
+      .send({ status: "BLOCKED" })
+      .expect(403);
+    await agent
+      .patch(`/api/admin/users/${target.id}/role`)
+      .send({ role: "ADMIN" })
+      .expect(403);
+
+    const unchangedTarget = await prisma.user.findUnique({ where: { id: target.id } });
+    assert.equal(unchangedTarget.status, "ACTIVE");
+    assert.equal(unchangedTarget.role, "USER");
+    assert.equal(
+      await prisma.auditLog.count({
+        where: {
+          entityId: target.id
+        }
+      }),
+      0
+    );
+  });
+
+  it("serializes concurrent role and status updates without duplicate audit entries", async () => {
+    const admin = await createUser({ email: uniqueEmail("concurrent-admin"), role: "ADMIN" });
+    const roleTarget = await createUser({ email: uniqueEmail("concurrent-role") });
+    const statusTarget = await createUser({ email: uniqueEmail("concurrent-status") });
+    const agent = await loginAgent(admin);
+
+    const roleResponses = await Promise.all([
+      agent
+        .patch(`/api/admin/users/${roleTarget.id}/role`)
+        .send({ role: "ADMIN" })
+        .expect(200),
+      agent
+        .patch(`/api/admin/users/${roleTarget.id}/role`)
+        .send({ role: "ADMIN" })
+        .expect(200)
+    ]);
+    const statusResponses = await Promise.all([
+      agent
+        .patch(`/api/admin/users/${statusTarget.id}/status`)
+        .send({ status: "BLOCKED" })
+        .expect(200),
+      agent
+        .patch(`/api/admin/users/${statusTarget.id}/status`)
+        .send({ status: "BLOCKED" })
+        .expect(200)
+    ]);
+
+    assert.ok(roleResponses.every((response) => response.body.data.user.role === "ADMIN"));
+    assert.ok(
+      statusResponses.every((response) => response.body.data.user.status === "BLOCKED")
+    );
+    assert.equal(
+      await prisma.auditLog.count({
+        where: {
+          action: "USER_ROLE_UPDATED",
+          entityId: roleTarget.id
+        }
+      }),
+      1
+    );
+    assert.equal(
+      await prisma.auditLog.count({
+        where: {
+          action: "USER_STATUS_UPDATED",
+          entityId: statusTarget.id
+        }
+      }),
+      1
+    );
   });
 
   it("admin can create category", async () => {

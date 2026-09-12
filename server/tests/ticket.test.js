@@ -5,6 +5,7 @@ import { after, beforeEach, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
+import QRCode from "qrcode";
 import request from "supertest";
 
 process.env.NODE_ENV = "test";
@@ -15,11 +16,11 @@ dotenv.config({ path: path.resolve(testDir, "../.env") });
 process.env.JWT_ACCESS_SECRET = "test-access-secret-with-enough-length";
 process.env.JWT_REFRESH_SECRET = "test-refresh-secret-with-enough-length";
 process.env.CLIENT_ORIGIN ||= "http://localhost:5173";
+process.env.PUBLIC_APP_URL = "https://eventflow.test/";
 process.env.COOKIE_DOMAIN = "";
 process.env.RAZORPAY_KEY_ID = "rzp_test_key_id";
 process.env.RAZORPAY_KEY_SECRET = "test_razorpay_secret";
 process.env.RAZORPAY_WEBHOOK_SECRET = "test_razorpay_webhook_secret";
-process.env.DEMO_MODE = "false";
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 let app;
@@ -332,6 +333,68 @@ ticketDescribe("QR tickets", () => {
     assert.ok(tickets.every((ticket) => ticket.status === "VALID"));
     assert.ok(tickets.every((ticket) => ticket.ticketNumber.startsWith("TCK-")));
     assert.ok(tickets.every((ticket) => ticket.qrCodeHash.length === 64));
+  });
+
+  it("encodes the public admin check-in URL without exposing the raw QR token", async (testContext) => {
+    const qrTokenBytes = Buffer.from(
+      Array.from({ length: 32 }, (_value, index) => index + 1)
+    );
+    const qrToken = qrTokenBytes.toString("base64url");
+    const originalRandomBytes = crypto.randomBytes;
+
+    testContext.mock.method(crypto, "randomBytes", (size, ...args) => {
+      if (size === 32 && args.length === 0) {
+        return Buffer.from(qrTokenBytes);
+      }
+
+      return Reflect.apply(originalRandomBytes, crypto, [size, ...args]);
+    });
+
+    const { admin, user, booking } = await createFixture({ quantity: 1 });
+    const userAgent = await loginAgent(user);
+    const adminAgent = await loginAgent(admin);
+
+    await confirmBookingWithPayment(userAgent, booking.id);
+
+    const expectedCheckInUrl = `${process.env.PUBLIC_APP_URL.replace(
+      /\/+$/,
+      ""
+    )}/admin/check-in?token=${encodeURIComponent(qrToken)}`;
+    const expectedQrCodeUrl = await QRCode.toDataURL(expectedCheckInUrl, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 280
+    });
+    const expectedHash = crypto.createHash("sha256").update(qrToken).digest("hex");
+    const savedTicket = await prisma.ticket.findFirstOrThrow({
+      where: { bookingId: booking.id }
+    });
+
+    assert.equal(savedTicket.qrCodeUrl, expectedQrCodeUrl);
+    assert.equal(savedTicket.qrCodeHash, expectedHash);
+    assert.notEqual(savedTicket.qrCodeHash, qrToken);
+    assert.equal(Object.hasOwn(savedTicket, "qrToken"), false);
+    assert.equal(JSON.stringify(savedTicket).includes(qrToken), false);
+
+    const ticketListResponse = await userAgent.get("/api/tickets/my").expect(200);
+    const apiTicket = ticketListResponse.body.data.tickets.find(
+      (ticket) => ticket.bookingId === booking.id
+    );
+
+    assert.ok(apiTicket);
+    assert.equal(apiTicket.qrCodeUrl, expectedQrCodeUrl);
+    assert.equal(Object.hasOwn(apiTicket, "qrCodeHash"), false);
+    assert.equal(Object.hasOwn(apiTicket, "qrToken"), false);
+    assert.equal(JSON.stringify(apiTicket).includes(qrToken), false);
+
+    const verifyResponse = await adminAgent
+      .post("/api/admin/check-in/verify")
+      .send({ qrToken })
+      .expect(200);
+
+    assert.equal(verifyResponse.body.data.ticket.id, savedTicket.id);
+    assert.equal(Object.hasOwn(verifyResponse.body.data.ticket, "qrCodeHash"), false);
+    assert.equal(Object.hasOwn(verifyResponse.body.data.ticket, "qrToken"), false);
   });
 
   it("duplicate payment verification does not duplicate tickets", async () => {

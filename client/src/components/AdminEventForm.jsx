@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { listAdminCategories } from "../api/admin.js";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "../utils/formatDate.js";
 
 const initialForm = {
   title: "",
+  shortDescription: "",
   description: "",
   categoryId: "",
   eventType: "OFFLINE",
@@ -27,6 +28,7 @@ function toFormState(event) {
 
   return {
     title: event.title ?? "",
+    shortDescription: event.shortDescription ?? "",
     description: event.description ?? "",
     categoryId: event.categoryId ?? "",
     eventType: event.eventType ?? "OFFLINE",
@@ -51,6 +53,18 @@ function validateForm(form) {
 
   if (!form.categoryId) {
     return "Choose a category.";
+  }
+
+  if (["OFFLINE", "HYBRID"].includes(form.eventType) && !form.venueName.trim()) {
+    return "Venue name is required for in-person events.";
+  }
+
+  if (["OFFLINE", "HYBRID"].includes(form.eventType) && !form.city.trim()) {
+    return "City is required for in-person events.";
+  }
+
+  if (["ONLINE", "HYBRID"].includes(form.eventType) && !form.onlineUrl.trim()) {
+    return "Online URL is required for online and hybrid events.";
   }
 
   if (!form.startAt || !form.endAt) {
@@ -79,6 +93,7 @@ function optionalValue(value) {
 function toPayload(form) {
   return {
     title: form.title,
+    shortDescription: optionalValue(form.shortDescription),
     description: optionalValue(form.description),
     categoryId: form.categoryId,
     eventType: form.eventType,
@@ -96,11 +111,16 @@ function toPayload(form) {
   };
 }
 
+function formsMatch(left, right) {
+  return Object.keys(initialForm).every((field) => left[field] === right[field]);
+}
+
 export function AdminEventForm({
   initialEvent = null,
   isSaving = false,
   submitLabel = "Save event",
   error = "",
+  onDirtyChange,
   onSubmit
 }) {
   const [form, setForm] = useState(() => toFormState(initialEvent));
@@ -108,10 +128,16 @@ export function AdminEventForm({
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [categoryError, setCategoryError] = useState("");
   const [validationError, setValidationError] = useState("");
+  const initialFormState = useMemo(() => toFormState(initialEvent), [initialEvent]);
+  const isDirty = !formsMatch(form, initialFormState);
 
   useEffect(() => {
     setForm(toFormState(initialEvent));
   }, [initialEvent]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
     async function loadCategories() {
@@ -132,6 +158,7 @@ export function AdminEventForm({
 
   function updateField(event) {
     const { checked, name, type, value } = event.target;
+    setValidationError("");
     setForm((current) => ({
       ...current,
       [name]: type === "checkbox" ? checked : value
@@ -164,10 +191,28 @@ export function AdminEventForm({
           <input
             className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
             id="title"
+            maxLength="160"
             name="title"
             onChange={updateField}
+            required
             type="text"
             value={form.title}
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="text-sm font-bold text-ink" htmlFor="shortDescription">
+            Short description
+          </label>
+          <input
+            className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+            id="shortDescription"
+            maxLength="220"
+            name="shortDescription"
+            onChange={updateField}
+            placeholder="A concise summary shown on event cards"
+            type="text"
+            value={form.shortDescription}
           />
         </div>
 
@@ -178,6 +223,7 @@ export function AdminEventForm({
           <textarea
             className="mt-2 min-h-[8rem] w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
             id="description"
+            maxLength="5000"
             name="description"
             onChange={updateField}
             value={form.description}
@@ -193,6 +239,7 @@ export function AdminEventForm({
             id="categoryId"
             name="categoryId"
             onChange={updateField}
+            required
             value={form.categoryId}
           >
             <option value="">Choose category</option>
@@ -215,9 +262,9 @@ export function AdminEventForm({
             onChange={updateField}
             value={form.eventType}
           >
-            <option value="ONLINE">ONLINE</option>
-            <option value="OFFLINE">OFFLINE</option>
-            <option value="HYBRID">HYBRID</option>
+            <option value="ONLINE">Online</option>
+            <option value="OFFLINE">In person</option>
+            <option value="HYBRID">Hybrid</option>
           </select>
         </div>
 
@@ -230,6 +277,7 @@ export function AdminEventForm({
             id="venueName"
             name="venueName"
             onChange={updateField}
+            required={["OFFLINE", "HYBRID"].includes(form.eventType)}
             type="text"
             value={form.venueName}
           />
@@ -244,6 +292,7 @@ export function AdminEventForm({
             id="city"
             name="city"
             onChange={updateField}
+            required={["OFFLINE", "HYBRID"].includes(form.eventType)}
             type="text"
             value={form.city}
           />
@@ -286,6 +335,7 @@ export function AdminEventForm({
             id="country"
             name="country"
             onChange={updateField}
+            required
             type="text"
             value={form.country}
           />
@@ -300,6 +350,7 @@ export function AdminEventForm({
             id="onlineUrl"
             name="onlineUrl"
             onChange={updateField}
+            required={["ONLINE", "HYBRID"].includes(form.eventType)}
             type="url"
             value={form.onlineUrl}
           />
@@ -314,6 +365,7 @@ export function AdminEventForm({
             id="startAt"
             name="startAt"
             onChange={updateField}
+            required
             type="datetime-local"
             value={form.startAt}
           />
@@ -328,6 +380,7 @@ export function AdminEventForm({
             id="endAt"
             name="endAt"
             onChange={updateField}
+            required
             type="datetime-local"
             value={form.endAt}
           />
@@ -349,7 +402,7 @@ export function AdminEventForm({
 
         <div>
           <label className="text-sm font-bold text-ink" htmlFor="capacity">
-            Event capacity <span className="font-normal text-ink/50">(optional)</span>
+            Event capacity <span className="font-normal text-ink/60">(optional)</span>
           </label>
           <input
             className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
@@ -375,13 +428,13 @@ export function AdminEventForm({
       </div>
 
       {categoryError ? (
-        <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember">
+        <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember" role="alert">
           {categoryError}
         </p>
       ) : null}
 
       {validationError || error ? (
-        <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember">
+        <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember" role="alert">
           {validationError || error}
         </p>
       ) : null}

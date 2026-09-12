@@ -16,24 +16,11 @@ import {
 } from "../services/admin.service.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 
-export function getAdminStatus(_req, res) {
-  return sendSuccess(
-    res,
-    {
-      implemented: true,
-      modules: [
-        "users",
-        "categories",
-        "events",
-        "ticketTypes",
-        "bookings",
-        "payments",
-        "tickets",
-        "checkIn"
-      ]
-    },
-    "Admin module ready"
-  );
+function getAuditContext(req) {
+  return {
+    ipAddress: req.ip,
+    userAgent: req.get("user-agent")
+  };
 }
 
 export async function getAdminDashboard(req, res, next) {
@@ -68,7 +55,8 @@ export async function patchUserStatus(req, res, next) {
     const user = await updateUserStatus(
       req.validated.params.id,
       req.validated.body.status,
-      req.user.id
+      req.user.id,
+      getAuditContext(req)
     );
     return sendSuccess(res, { user }, "User status updated");
   } catch (error) {
@@ -81,7 +69,8 @@ export async function patchUserRole(req, res, next) {
     const user = await updateUserRole(
       req.validated.params.id,
       req.validated.body.role,
-      req.user.id
+      req.user.id,
+      getAuditContext(req)
     );
     return sendSuccess(res, { user }, "User role updated");
   } catch (error) {

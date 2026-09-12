@@ -19,6 +19,10 @@ function requireRazorpayCredentials() {
   requireRazorpayTestKey();
 }
 
+export function assertRazorpayTestCredentials() {
+  requireRazorpayCredentials();
+}
+
 function requireWebhookSecret() {
   if (!env.RAZORPAY_WEBHOOK_SECRET) {
     throw createHttpError(500, "Razorpay webhook is not configured");

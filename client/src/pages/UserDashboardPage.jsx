@@ -10,16 +10,17 @@ export function UserDashboardPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-16">
+      <section className="site-shell py-10 lg:py-16">
         <div className="hero-panel rounded-lg p-6">
           <p className="text-sm font-extrabold uppercase tracking-wide text-cyan">
-            User dashboard
+            Your EventFlow
           </p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-normal sm:text-4xl">
             Welcome, {currentUser?.name ?? "EventFlow user"}.
           </h1>
           <p className="mt-3 max-w-2xl text-ink/70">
-            {currentUser?.email}
+            Find your reservations and entry passes here, or discover something
+            new to attend.
           </p>
         </div>
 
@@ -46,7 +47,7 @@ export function UserDashboardPage() {
             </p>
             <p className="mt-2 text-lg font-bold text-ink">QR tickets</p>
             <p className="mt-2 text-sm leading-6 text-ink/65">
-              Confirmed bookings generate QR tickets for event entry.
+              Open confirmed tickets on your phone or download a copy before you go.
             </p>
             <Link
               className="mt-4 inline-flex rounded-lg border border-ink/15 px-4 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
@@ -61,6 +62,9 @@ export function UserDashboardPage() {
               Events
             </p>
             <p className="mt-2 text-lg font-bold text-ink">Explore featured events</p>
+            <p className="mt-2 text-sm leading-6 text-ink/65">
+              Browse upcoming experiences by category, city, and format.
+            </p>
             <Link
               className="action-primary mt-4 inline-flex px-4 py-2 text-sm font-bold"
               to="/events"

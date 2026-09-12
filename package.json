@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "JavaScript-only full-stack monorepo for an event management platform.",
+  "description": "EventFlow full-stack event management platform.",
   "workspaces": [
     "client",
     "server"

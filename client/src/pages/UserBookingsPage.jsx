@@ -7,6 +7,27 @@ import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
 import { formatDateTime } from "../utils/formatDate.js";
 
+function getBookingAction(booking) {
+  if (booking.status === "PENDING") {
+    return {
+      label: "Continue checkout",
+      to: `/checkout/${booking.id}`
+    };
+  }
+
+  if (booking.status === "CONFIRMED") {
+    return {
+      label: "View tickets",
+      to: "/user/tickets"
+    };
+  }
+
+  return {
+    label: "Browse events",
+    to: "/events"
+  };
+}
+
 export function UserBookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +54,7 @@ export function UserBookingsPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="section-kicker">
@@ -78,6 +99,7 @@ export function UserBookingsPage() {
             <div className="divide-y divide-ink/10">
               {bookings.map((booking) => {
                 const bookingItem = booking.items?.[0] ?? null;
+                const bookingAction = getBookingAction(booking);
 
                 return (
                   <div
@@ -95,7 +117,7 @@ export function UserBookingsPage() {
                         {bookingItem?.ticketType?.name ?? "Ticket"} - Quantity{" "}
                         {booking.quantity}
                       </p>
-                      <p className="mt-1 text-sm text-ink/55">
+                      <p className="mt-1 text-sm text-ink/65">
                         {formatDateTime(booking.event?.startsAt)}
                       </p>
                     </div>
@@ -106,9 +128,9 @@ export function UserBookingsPage() {
                       </p>
                       <Link
                         className="action-secondary px-4 py-2 text-sm font-bold"
-                        to={`/checkout/${booking.id}`}
+                        to={bookingAction.to}
                       >
-                        View
+                        {bookingAction.label}
                       </Link>
                     </div>
                   </div>

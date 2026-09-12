@@ -16,7 +16,7 @@
 
 ## Deployment boundary
 
-The hosted deployment is a demonstration system using Razorpay Test Mode. It
+The hosted deployment uses Razorpay Test Mode. It
 does not accept real customer money. Test checkout is labelled in the UI, and
 the server rejects any Razorpay key that does not begin with `rzp_test_`.
 

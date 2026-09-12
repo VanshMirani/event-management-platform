@@ -14,14 +14,14 @@ The server rejects `rzp_live_` keys, so this project cannot accidentally accept
 real customer payments.
 
 Zero-value ticket bookings bypass Razorpay and use the protected
-`/api/payments/free-confirm` path even while demo mode is disabled. That route
-checks the stored server-side total and rejects paid bookings.
+`/api/payments/free-confirm` path. That route checks the stored server-side total
+and rejects paid bookings.
 
-## Optional no-charge demo fallback
-
-When both demo flags are explicitly enabled, checkout uses the protected demo
-confirmation endpoint instead of loading Razorpay. The server validates booking
-ownership, status, inventory, and expiry, then records a clearly identified demo
-confirmation and generates QR tickets.
-
-This fallback is disabled in the hosted project.
+Repeated create-order requests reuse the booking's active local Razorpay order
+instead of creating another provider order. Before an order is created or a
+payment is confirmed, the server rechecks the booking expiry and event status in
+a database transaction. Order creation locks the booking and event so concurrent
+requests cannot create duplicate provider orders; confirmation uses serializable
+transactions. If the event is no longer published or has started, the pending
+hold is cancelled, reserved inventory is restored exactly once, any non-success
+payment is marked failed, and no tickets are generated.

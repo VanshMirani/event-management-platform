@@ -110,7 +110,8 @@ Returns one public user record.
 
 ### PATCH `/admin/users/:id/status`
 
-Updates a user's status. Admins cannot block their own account.
+Updates a user's status. Admins cannot block their own account, and an update cannot
+remove the final active administrator.
 
 Request body:
 
@@ -124,17 +125,18 @@ Allowed statuses: `ACTIVE`, `BLOCKED`.
 
 ### PATCH `/admin/users/:id/role`
 
-Updates a user's role. Admins cannot remove their own admin role.
+Updates a user's role. Admins cannot remove their own admin role, and an update cannot
+remove the final active administrator.
 
 Request body:
 
 ```json
 {
-  "role": "ORGANIZER"
+  "role": "ADMIN"
 }
 ```
 
-Allowed roles: `USER`, `ADMIN`, `ORGANIZER`.
+Allowed roles: `USER`, `ADMIN`.
 
 ### POST `/admin/categories`
 
@@ -258,7 +260,7 @@ Query parameters:
 - `page` optional, defaults to `1`
 - `limit` optional, defaults to `20`, maximum `100`
 - `status` optional: `CREATED`, `SUCCESS`, `FAILED`, `REFUNDED`
-- `provider` optional
+- `provider` optional: `free` or `razorpay`
 - `bookingId` optional
 - `search` optional; searches provider ids, booking code, user name/email, and event title
 - `dateFrom` optional
@@ -332,15 +334,13 @@ Payment routes use Razorpay test mode. The backend never trusts frontend amounts
 
 ### POST `/payments/free-confirm`
 
-Requires authentication. Confirms the authenticated user's own zero-total `PENDING` booking without opening Razorpay and generates its QR tickets. A paid booking is rejected with `400`.
-
-### POST `/payments/demo-confirm`
-
-Requires authentication and `DEMO_MODE=true`. Confirms the authenticated user's own `PENDING` booking without contacting Razorpay. This optional fallback is disabled in deployed Razorpay Test Mode and returns `404` when disabled.
+Requires authentication. Confirms the authenticated user's own zero-total `PENDING` booking without opening Razorpay and generates its QR tickets. A paid booking is rejected with `400`. Booking expiry and event availability are checked with the same transactional cancellation and inventory-release rules as paid confirmation.
 
 ### POST `/payments/razorpay/create-order`
 
-Requires authentication. Creates a Razorpay order for the authenticated user's own `PENDING` booking and creates or updates the local `Payment` record.
+Requires authentication. Creates a Razorpay order for the authenticated user's own `PENDING` booking and creates or updates the local `Payment` record. Repeated requests reuse an active local Razorpay order. The event and booking expiry are revalidated transactionally before contacting Razorpay and again before storing the order.
+
+The response includes `reused: true` when an existing active local order was returned and `false` when this request created it.
 
 Request body:
 
@@ -356,10 +356,12 @@ Responses:
 - `400` booking is not pending
 - `401` authentication required
 - `404` booking not found for the current user
+- `409` event is no longer available; the pending hold is cancelled and its inventory is released
+- `410` booking expired; the pending hold is cancelled and its inventory is released
 
 ### POST `/payments/razorpay/verify`
 
-Requires authentication. Verifies the Razorpay signature with `RAZORPAY_KEY_SECRET`, marks the payment `SUCCESS`, marks the booking `CONFIRMED`, and generates QR tickets idempotently. Duplicate verification with the same order/payment ids is idempotent.
+Requires authentication. Verifies the Razorpay signature with `RAZORPAY_KEY_SECRET`, revalidates event availability transactionally, marks the payment `SUCCESS`, marks the booking `CONFIRMED`, and generates QR tickets idempotently. Duplicate verification with the same order/payment ids is idempotent. If the event is no longer available, the pending hold is cancelled, inventory is restored exactly once, the local non-success payment is marked `FAILED`, and no tickets are created.
 
 Request body:
 
@@ -378,13 +380,14 @@ Responses:
 - `400` invalid signature or mismatched payment order
 - `401` authentication required
 - `404` booking not found for the current user
-- `409` booking was already confirmed with another payment
+- `409` booking was already confirmed with another payment or the event is no longer available
+- `410` booking expired; the pending hold is cancelled and its inventory is released
 
 ## Webhooks
 
 ### POST `/webhooks/razorpay`
 
-Public Razorpay webhook endpoint. Verifies `x-razorpay-signature` with `RAZORPAY_WEBHOOK_SECRET` before handling success or failure events. Success handling is idempotent.
+Public Razorpay webhook endpoint. Verifies `x-razorpay-signature` with `RAZORPAY_WEBHOOK_SECRET` before handling success or failure events. Success handling is idempotent and applies the same transactional expiry/event-availability checks as direct verification.
 
 ## Tickets
 

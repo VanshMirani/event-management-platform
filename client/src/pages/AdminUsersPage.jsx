@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listAdminUsers, updateAdminUserStatus } from "../api/admin.js";
+import {
+  listAdminUsers,
+  updateAdminUserRole,
+  updateAdminUserStatus
+} from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useAuth } from "../features/auth/index.js";
@@ -24,14 +28,12 @@ export function AdminUsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
-  const [updatingUserId, setUpdatingUserId] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
+  const [pendingAction, setPendingAction] = useState({ userId: "", type: "" });
 
   const userCountLabel = useMemo(() => {
-    if (!pagination) {
-      return `${users.length} users`;
-    }
-
-    return `${pagination.total} users`;
+    const count = pagination?.total ?? users.length;
+    return `${count} ${count === 1 ? "user" : "users"}`;
   }, [pagination, users.length]);
 
   const loadUsers = useCallback(async (page = 1) => {
@@ -55,24 +57,60 @@ export function AdminUsersPage() {
 
   async function handleToggleStatus(user) {
     const nextStatus = user.status === "ACTIVE" ? "BLOCKED" : "ACTIVE";
-    setUpdatingUserId(user.id);
+    const actionLabel = nextStatus === "BLOCKED" ? "block" : "unblock";
+
+    if (!window.confirm(`Are you sure you want to ${actionLabel} ${user.name}?`)) {
+      return;
+    }
+
+    setPendingAction({ userId: user.id, type: "status" });
     setActionError("");
+    setActionSuccess("");
 
     try {
       const updatedUser = await updateAdminUserStatus(user.id, nextStatus);
       setUsers((currentUsers) =>
         currentUsers.map((current) => (current.id === updatedUser.id ? updatedUser : current))
       );
+      setActionSuccess(`${updatedUser.name} is now ${nextStatus.toLowerCase()}.`);
     } catch (updateError) {
       setActionError(updateError.message);
     } finally {
-      setUpdatingUserId("");
+      setPendingAction({ userId: "", type: "" });
+    }
+  }
+
+  async function handleRoleChange(user, nextRole, selectElement) {
+    if (nextRole === user.role) {
+      return;
+    }
+
+    const roleLabel = nextRole === "ADMIN" ? "Admin" : "User";
+    if (!window.confirm(`Change ${user.name}'s role to ${roleLabel}?`)) {
+      selectElement.value = user.role;
+      return;
+    }
+
+    setPendingAction({ userId: user.id, type: "role" });
+    setActionError("");
+    setActionSuccess("");
+
+    try {
+      const updatedUser = await updateAdminUserRole(user.id, nextRole);
+      setUsers((currentUsers) =>
+        currentUsers.map((current) => (current.id === updatedUser.id ? updatedUser : current))
+      );
+      setActionSuccess(`${updatedUser.name}'s role is now ${roleLabel}.`);
+    } catch (updateError) {
+      setActionError(updateError.message);
+    } finally {
+      setPendingAction({ userId: "", type: "" });
     }
   }
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <AdminNav />
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
@@ -83,6 +121,10 @@ export function AdminUsersPage() {
             <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
               Platform users
             </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/65">
+              Assign User or Admin access and manage account status. Your own admin access is
+              locked.
+            </p>
           </div>
           <p className="surface-card rounded-lg px-4 py-2 text-sm font-bold text-ink/70">
             {userCountLabel}
@@ -90,8 +132,20 @@ export function AdminUsersPage() {
         </div>
 
         {actionError ? (
-          <p className="mt-5 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember">
+          <p
+            className="mt-5 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember"
+            role="alert"
+          >
             {actionError}
+          </p>
+        ) : null}
+        {actionSuccess ? (
+          <p
+            aria-live="polite"
+            className="mt-5 rounded-lg border border-mint/20 bg-mint/10 px-4 py-3 text-sm font-semibold text-mint"
+            role="status"
+          >
+            {actionSuccess}
           </p>
         ) : null}
 
@@ -113,31 +167,73 @@ export function AdminUsersPage() {
             <p className="p-6 text-sm font-semibold text-ink/60">No users found.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-                <thead className="bg-linen text-xs font-bold uppercase tracking-wide text-ink/55">
+              <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+                <thead className="bg-linen text-xs font-bold uppercase tracking-wide text-ink/65">
                   <tr>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Email</th>
-                    <th className="px-4 py-3">Role</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Created</th>
-                    <th className="px-4 py-3">Action</th>
+                    <th className="px-4 py-3" scope="col">Name</th>
+                    <th className="px-4 py-3" scope="col">Email</th>
+                    <th className="px-4 py-3" scope="col">Role</th>
+                    <th className="px-4 py-3" scope="col">Status</th>
+                    <th className="px-4 py-3" scope="col">Created</th>
+                    <th className="px-4 py-3" scope="col">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink/10">
                   {users.map((user) => {
                     const isCurrentAdmin = user.id === currentUser?.id;
-                    const isUpdating = updatingUserId === user.id;
+                    const isUpdating = pendingAction.userId === user.id;
+                    const isUpdatingRole = isUpdating && pendingAction.type === "role";
+                    const isUpdatingStatus = isUpdating && pendingAction.type === "status";
+                    const isAnyActionPending = Boolean(pendingAction.userId);
+                    const hasManageableRole = user.role === "USER" || user.role === "ADMIN";
                     const nextAction = user.status === "ACTIVE" ? "Block" : "Unblock";
 
                     return (
-                      <tr key={user.id}>
+                      <tr aria-busy={isUpdating} key={user.id}>
                         <td className="px-4 py-4 font-bold text-ink">{user.name}</td>
                         <td className="px-4 py-4 text-ink/70">{user.email}</td>
                         <td className="px-4 py-4">
-                          <span className="rounded-lg border border-aurora/20 bg-aurora/10 px-3 py-1 text-xs font-extrabold text-aurora">
-                            {user.role}
-                          </span>
+                          {hasManageableRole ? (
+                            <div className="min-w-36">
+                              <label className="sr-only" htmlFor={`user-role-${user.id}`}>
+                                Role for {user.name}
+                              </label>
+                              <select
+                                aria-describedby={
+                                  isCurrentAdmin ? `current-admin-lock-${user.id}` : undefined
+                                }
+                                className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm font-bold text-ink outline-none transition focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:cursor-not-allowed disabled:text-ink/60"
+                                disabled={isCurrentAdmin || isAnyActionPending}
+                                id={`user-role-${user.id}`}
+                                onChange={(event) =>
+                                  handleRoleChange(user, event.target.value, event.currentTarget)
+                                }
+                                title={
+                                  isCurrentAdmin
+                                    ? "Your own admin role cannot be changed"
+                                    : `Change role for ${user.name}`
+                                }
+                                value={user.role}
+                              >
+                                <option value="USER">User</option>
+                                <option value="ADMIN">Admin</option>
+                              </select>
+                              {isUpdatingRole ? (
+                                <span className="mt-1 block text-xs font-semibold text-ink/65">
+                                  Saving role...
+                                </span>
+                              ) : null}
+                              {isCurrentAdmin ? (
+                                <span className="sr-only" id={`current-admin-lock-${user.id}`}>
+                                  Your own role and status cannot be changed here.
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="rounded-lg border border-ink/15 bg-linen px-3 py-1 text-xs font-extrabold text-ink/60">
+                              Reserved role
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <StatusBadge status={user.status} />
@@ -145,15 +241,16 @@ export function AdminUsersPage() {
                         <td className="px-4 py-4 text-ink/65">{formatDate(user.createdAt)}</td>
                         <td className="px-4 py-4">
                           <button
-                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-bold text-ink hover:border-ember hover:text-ember disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
-                            disabled={isCurrentAdmin || isUpdating}
+                            aria-label={`${nextAction} ${user.name}`}
+                            className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-bold text-ink hover:border-ember hover:text-ember disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/60"
+                            disabled={isCurrentAdmin || isAnyActionPending}
                             onClick={() => handleToggleStatus(user)}
                             type="button"
                           >
                             {isCurrentAdmin
                               ? "Current admin"
-                              : isUpdating
-                                ? "Saving..."
+                              : isUpdatingStatus
+                                ? "Saving status..."
                                 : nextAction}
                           </button>
                         </td>

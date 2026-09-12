@@ -274,7 +274,7 @@ authDescribe("auth routes", () => {
     const agent = request.agent(app);
 
     await agent.post("/api/auth/login").send({ email, password }).expect(200);
-    const response = await agent.get("/api/admin/status").expect(403);
+    const response = await agent.get("/api/admin/dashboard").expect(403);
 
     assert.equal(response.body.status, "error");
   });

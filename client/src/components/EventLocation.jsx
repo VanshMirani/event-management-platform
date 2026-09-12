@@ -27,6 +27,7 @@ export function EventLocation({ event, fallback = "To be announced" }) {
         target="_blank"
       >
         Open online event link
+        <span className="sr-only"> (opens in a new tab)</span>
         <span aria-hidden="true" className="ml-1">
           ↗
         </span>
@@ -51,6 +52,7 @@ export function EventLocation({ event, fallback = "To be announced" }) {
           target="_blank"
         >
           Open online event link
+          <span className="sr-only"> (opens in a new tab)</span>
           <span aria-hidden="true" className="ml-1">
             ↗
           </span>

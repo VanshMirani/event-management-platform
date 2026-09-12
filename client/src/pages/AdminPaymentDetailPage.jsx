@@ -8,6 +8,18 @@ import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
 import { formatDateTime } from "../utils/formatDate.js";
 
+function formatProvider(provider) {
+  if (provider === "razorpay") {
+    return "Razorpay Test Mode";
+  }
+
+  if (provider === "free") {
+    return "Free booking";
+  }
+
+  return provider || "Not recorded";
+}
+
 export function AdminPaymentDetailPage() {
   const { id } = useParams();
   const [payment, setPayment] = useState(null);
@@ -35,7 +47,7 @@ export function AdminPaymentDetailPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <AdminNav />
 
         {isLoading ? (
@@ -57,14 +69,17 @@ export function AdminPaymentDetailPage() {
           <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
             <div className="surface-card rounded-lg p-6">
               <p className="section-kicker">
-                Payment
+                Payment record
               </p>
-              <h1 className="mt-2 break-all text-3xl font-extrabold tracking-normal text-ink">
-                {payment.id}
+              <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
+                Payment details
               </h1>
+              <p className="mt-2 break-all text-sm font-semibold text-ink/65">
+                Reference: {payment.id}
+              </p>
               <div className="mt-5 grid gap-4 sm:grid-cols-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
+                  <p className="text-xs font-bold uppercase tracking-wide text-ink/65">
                     Status
                   </p>
                   <div className="mt-1">
@@ -72,7 +87,7 @@ export function AdminPaymentDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
+                  <p className="text-xs font-bold uppercase tracking-wide text-ink/65">
                     Amount
                   </p>
                   <p className="mt-1 font-bold text-ink">
@@ -80,16 +95,18 @@ export function AdminPaymentDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
+                  <p className="text-xs font-bold uppercase tracking-wide text-ink/65">
                     Provider
                   </p>
-                  <p className="mt-1 font-bold text-ink">{payment.provider}</p>
+                  <p className="mt-1 font-bold text-ink">
+                    {formatProvider(payment.provider)}
+                  </p>
                 </div>
               </div>
 
               <div className="mt-6 rounded-lg border border-cyan/10 bg-cyan/5 p-4">
                 <p className="text-sm font-semibold uppercase tracking-wide text-mint">
-                  Provider ids
+                  Provider references
                 </p>
                 <p className="mt-3 break-all text-sm text-ink/70">
                   Order: {payment.providerOrderId ?? "-"}
@@ -99,10 +116,14 @@ export function AdminPaymentDetailPage() {
                 </p>
               </div>
 
-              <p className="mt-5 text-sm text-ink/65">
-                Paid at {formatDateTime(payment.paidAt)}. Created at{" "}
-                {formatDateTime(payment.createdAt)}.
-              </p>
+              <div className="mt-5 space-y-1 text-sm text-ink/65">
+                <p>Created {formatDateTime(payment.createdAt)}</p>
+                <p>
+                  {payment.paidAt
+                    ? `Paid ${formatDateTime(payment.paidAt)}`
+                    : "Payment has not been completed."}
+                </p>
+              </div>
             </div>
 
             <aside className="space-y-6">

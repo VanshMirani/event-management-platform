@@ -1,7 +1,6 @@
 import { Router } from "express";
 import {
   getAdminDashboard,
-  getAdminStatus,
   getBookingById,
   getBookings,
   getCategories,
@@ -67,7 +66,6 @@ import { checkInLookupSchema } from "../validators/ticket.validator.js";
 const router = Router();
 
 router.use(authMiddleware, adminMiddleware);
-router.get("/status", getAdminStatus);
 router.get("/dashboard", getAdminDashboard);
 router.get("/users", validateRequest(adminListQuerySchema), getUsers);
 router.get("/users/:id", validateRequest(adminUserParamsSchema), getUserById);

@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { AdminCategoriesPage } from "../pages/AdminCategoriesPage.jsx";
 import { AdminBookingDetailPage } from "../pages/AdminBookingDetailPage.jsx";
 import { AdminBookingsPage } from "../pages/AdminBookingsPage.jsx";
@@ -15,6 +15,7 @@ import { EventDetailPage } from "../pages/EventDetailPage.jsx";
 import { EventsPage } from "../pages/EventsPage.jsx";
 import { HomePage } from "../pages/HomePage.jsx";
 import { LoginPage } from "../pages/LoginPage.jsx";
+import { NotFoundPage } from "../pages/NotFoundPage.jsx";
 import { PaymentFailedPage } from "../pages/PaymentFailedPage.jsx";
 import { PaymentSuccessPage } from "../pages/PaymentSuccessPage.jsx";
 import { RegisterPage } from "../pages/RegisterPage.jsx";
@@ -177,7 +178,7 @@ export function AppRoutes() {
           </AdminRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

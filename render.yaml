@@ -1,6 +1,4 @@
 databases:
-  # Hidden Blueprint/database resource ID. Keep this stable so Render updates
-  # the existing database instead of creating a replacement.
   - name: eventflow-db
     databaseName: eventflow
     user: eventflow
@@ -9,17 +7,19 @@ databases:
 
 services:
   - type: web
-    name: event-management-platform
+    name: eventflow-api
     runtime: node
     plan: free
     buildCommand: npm ci --include=dev && npm run build
-    # Free services do not support one-off jobs or shell access. Keep the
-    # idempotent demo seed in startup so fresh databases are always usable.
+    # Free services do not support one-off jobs or shell access, so keep the
+    # starter catalog idempotent for fresh databases.
     startCommand: npm run prisma:deploy && npm run prisma:seed && npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PUBLIC_APP_URL
+        value: https://eventflow-event-management.vercel.app
       - key: DATABASE_URL
         fromDatabase:
           name: eventflow-db
@@ -28,10 +28,6 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
-      - key: DEMO_MODE
-        value: "false"
-      - key: VITE_ENABLE_DEMO_CHECKOUT
-        value: "false"
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET

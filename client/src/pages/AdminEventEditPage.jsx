@@ -23,6 +23,7 @@ export function AdminEventEditPage() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isFormDirty, setIsFormDirty] = useState(false);
 
   useEffect(() => {
     async function loadEvent() {
@@ -56,6 +57,11 @@ export function AdminEventEditPage() {
   }
 
   async function handleTogglePublish() {
+    if (isFormDirty) {
+      setActionError("Save your event changes before changing its publication status.");
+      return;
+    }
+
     setIsPublishing(true);
     setActionError("");
 
@@ -74,7 +80,7 @@ export function AdminEventEditPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-5xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <AdminNav />
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
@@ -85,28 +91,43 @@ export function AdminEventEditPage() {
             <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
               Edit event
             </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/65">
+              Save event details and manage ticket types below. At least one active
+              ticket type is required before publishing.
+            </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            {event ? (
-              <button
-                className="action-secondary px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:text-ink/35"
-                disabled={isPublishing}
-                onClick={handleTogglePublish}
-                type="button"
+          <div>
+            <div className="flex flex-wrap gap-3">
+              {event && ["DRAFT", "PUBLISHED"].includes(event.status) ? (
+                <button
+                  aria-describedby={isFormDirty ? "event-lifecycle-note" : undefined}
+                  className="action-secondary px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:text-ink/60"
+                  disabled={isPublishing || isFormDirty}
+                  onClick={handleTogglePublish}
+                  type="button"
+                >
+                  {isPublishing
+                    ? "Saving..."
+                    : event.status === "PUBLISHED"
+                      ? "Unpublish"
+                      : "Publish"}
+                </button>
+              ) : null}
+              <Link
+                className="action-secondary px-5 py-3 text-sm font-bold"
+                to="/admin/events"
               >
-                {isPublishing
-                  ? "Saving..."
-                  : event.status === "PUBLISHED"
-                    ? "Unpublish"
-                    : "Publish"}
-              </button>
+                Back to events
+              </Link>
+            </div>
+            {isFormDirty && event && ["DRAFT", "PUBLISHED"].includes(event.status) ? (
+              <p
+                className="mt-2 max-w-sm text-sm font-semibold text-ink/65"
+                id="event-lifecycle-note"
+              >
+                Save your event changes before changing its publication status.
+              </p>
             ) : null}
-            <Link
-              className="action-secondary px-5 py-3 text-sm font-bold"
-              to="/admin/events"
-            >
-              Back to events
-            </Link>
           </div>
         </div>
 
@@ -125,6 +146,7 @@ export function AdminEventEditPage() {
                 error={actionError}
                 initialEvent={event}
                 isSaving={isSaving}
+                onDirtyChange={setIsFormDirty}
                 onSubmit={handleSubmit}
                 submitLabel="Save changes"
               />

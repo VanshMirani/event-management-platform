@@ -49,6 +49,7 @@ export function EventsPage() {
         event.city,
         event.country,
         event.eventType,
+        event.eventType === "OFFLINE" ? "in person" : "",
         event.category?.name
       ]
         .filter(Boolean)
@@ -61,16 +62,17 @@ export function EventsPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <div className="hero-panel rounded-lg p-6 md:p-8">
           <p className="text-sm font-extrabold uppercase tracking-wide text-cyan">
-            Published events
+            Find your next experience
           </p>
           <h1 className="mt-3 text-4xl font-extrabold tracking-normal sm:text-5xl">
             Explore upcoming events
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-ink/70">
-            Browse live experiences, choose your ticket type, and continue into secure checkout.
+            Search by interest or location, compare ticket options, and reserve
+            your place in a few simple steps.
           </p>
         </div>
 
@@ -135,18 +137,28 @@ export function EventsPage() {
           </div>
         ) : events.length === 0 ? (
           <p className="state-card mt-6 p-5 text-sm font-semibold text-ink/60">
-            No published events are available yet.
+            There are no upcoming events right now. Please check back soon.
           </p>
         ) : visibleEvents.length === 0 ? (
           <p className="state-card mt-6 p-5 text-sm font-semibold text-ink/60">
             No events match those filters.
           </p>
         ) : (
-          <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {visibleEvents.map((event) => (
-              <EventCard event={event} key={event.id} />
-            ))}
-          </div>
+          <section className="mt-6" aria-labelledby="event-results-heading">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-extrabold text-ink" id="event-results-heading">
+                Upcoming events
+              </h2>
+              <p className="text-sm font-semibold text-ink/65" aria-live="polite">
+                {visibleEvents.length} {visibleEvents.length === 1 ? "event" : "events"}
+              </p>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {visibleEvents.map((event) => (
+                <EventCard event={event} key={event.id} />
+              ))}
+            </div>
+          </section>
         )}
       </section>
     </AppLayout>

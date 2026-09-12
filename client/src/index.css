@@ -10,6 +10,28 @@
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+
+  a:hover,
+  button:hover,
+  img,
+  table tbody tr:hover {
+    transform: none !important;
+  }
 }
 
 * {
@@ -64,12 +86,8 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid rgba(34, 211, 238, 0.65);
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #312e81;
   outline-offset: 3px;
 }
 

@@ -10,6 +10,11 @@ const optionalLongTextSchema = z.preprocess(
   z.string().trim().max(5000).nullable().optional()
 );
 
+const optionalShortTextSchema = z.preprocess(
+  (value) => (value === "" ? null : value),
+  z.string().trim().max(220).nullable().optional()
+);
+
 const optionalUrlSchema = z.preprocess(
   (value) => (value === "" ? null : value),
   z.string().trim().url().max(1000).nullable().optional()
@@ -44,6 +49,7 @@ export const createEventSchema = z.object({
   body: z
     .object({
       title: z.string().trim().min(3).max(160),
+      shortDescription: optionalShortTextSchema,
       description: optionalLongTextSchema,
       categoryId: z.string().min(1),
       eventType: eventTypeSchema.default("OFFLINE"),
@@ -71,6 +77,7 @@ export const updateEventSchema = z.object({
   body: z
     .object({
       title: z.string().trim().min(3).max(160).optional(),
+      shortDescription: optionalShortTextSchema,
       description: optionalLongTextSchema,
       categoryId: z.string().min(1).optional(),
       eventType: eventTypeSchema.optional(),

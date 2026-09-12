@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const adminLinks = [
@@ -13,11 +14,31 @@ const adminLinks = [
 
 export function AdminNav() {
   const location = useLocation();
+  const navigationRef = useRef(null);
+  const activeLinkRef = useRef(null);
+
+  useEffect(() => {
+    const navigation = navigationRef.current;
+    const activeLink = activeLinkRef.current;
+
+    if (!navigation || !activeLink) {
+      return;
+    }
+
+    const centeredPosition =
+      activeLink.offsetLeft - (navigation.clientWidth - activeLink.offsetWidth) / 2;
+
+    navigation.scrollTo({
+      behavior: "auto",
+      left: Math.max(0, centeredPosition)
+    });
+  }, [location.pathname]);
 
   return (
     <nav
       aria-label="Admin navigation"
       className="surface-card overflow-x-auto rounded-lg p-2"
+      ref={navigationRef}
     >
       <div className="flex min-w-max gap-2">
         {adminLinks.map((link) => {
@@ -40,6 +61,7 @@ export function AdminNav() {
                   : "text-ink/65 hover:bg-cyan/10 hover:text-cyan"
               }`}
               key={link.label}
+              ref={isActive ? activeLinkRef : undefined}
               to={link.to}
             >
               {link.label}

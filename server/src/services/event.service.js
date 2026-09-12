@@ -71,6 +71,7 @@ function toEventResponse(event) {
     title: event.title,
     slug: event.slug,
     description: event.description,
+    shortDescription: event.shortDescription,
     categoryId: event.categoryId,
     category: event.category,
     organizerId: event.organizerId,
@@ -163,6 +164,10 @@ function mapEventData(input) {
 
   if (input.description !== undefined) {
     data.description = normalizeOptionalText(input.description);
+  }
+
+  if (input.shortDescription !== undefined) {
+    data.shortDescription = normalizeOptionalText(input.shortDescription);
   }
 
   if (input.categoryId !== undefined) {
@@ -259,6 +264,16 @@ function ensurePublishedEventIsUpcoming(status, startsAt) {
   }
 }
 
+function ensureEventStatusTransition(currentStatus, nextStatus) {
+  if (
+    nextStatus &&
+    nextStatus !== currentStatus &&
+    ["CANCELLED", "COMPLETED"].includes(currentStatus)
+  ) {
+    throw createHttpError(409, `${currentStatus.toLowerCase()} events cannot change status`);
+  }
+}
+
 async function ensureCapacitySupportsTicketTypes(eventId, capacity, db = prisma) {
   if (capacity === null || capacity === undefined) {
     return;
@@ -275,6 +290,22 @@ async function ensureCapacitySupportsTicketTypes(eventId, capacity, db = prisma)
 
   if ((ticketTotals._sum.totalQuantity ?? 0) > capacity) {
     throw createHttpError(400, "capacity cannot be lower than configured ticket inventory");
+  }
+}
+
+async function ensureEventHasActiveTicketType(eventId, db = prisma) {
+  const activeTicketTypeCount = await db.ticketType.count({
+    where: {
+      eventId,
+      isActive: true,
+      totalQuantity: {
+        gt: 0
+      }
+    }
+  });
+
+  if (activeTicketTypeCount === 0) {
+    throw createHttpError(409, "Add at least one active ticket type before publishing");
   }
 }
 
@@ -314,6 +345,10 @@ function handleEventWriteError(error) {
 }
 
 export async function createAdminEvent(input, organizerId) {
+  if (input.status === "PUBLISHED") {
+    throw createHttpError(409, "Create the event as a draft, add a ticket type, then publish it");
+  }
+
   await ensureCategoryExists(input.categoryId);
 
   const startsAt = new Date(input.startAt);
@@ -376,6 +411,7 @@ export async function updateAdminEvent(eventId, input) {
       }
 
       const updateData = mapEventData(input);
+      ensureEventStatusTransition(existingEvent.status, updateData.status);
 
       if (input.title !== undefined) {
         updateData.slug = await createUniqueEventSlug(input.title, eventId, tx);
@@ -385,6 +421,10 @@ export async function updateAdminEvent(eventId, input) {
       const endsAt = updateData.endsAt ?? existingEvent.endsAt;
       ensureDateOrder(startsAt, endsAt);
       const status = updateData.status ?? existingEvent.status;
+
+      if (status === "PUBLISHED" && existingEvent.status !== "PUBLISHED") {
+        await ensureEventHasActiveTicketType(eventId, tx);
+      }
 
       if (input.status === "PUBLISHED" || input.startAt !== undefined) {
         ensurePublishedEventIsUpcoming(status, startsAt);
@@ -443,7 +483,9 @@ export async function deleteAdminEvent(eventId) {
 export async function publishAdminEvent(eventId) {
   return runSerializableTransaction(async (tx) => {
     const existingEvent = await getExistingEvent(eventId, tx);
+    ensureEventStatusTransition(existingEvent.status, "PUBLISHED");
     ensurePublishedEventIsUpcoming("PUBLISHED", existingEvent.startsAt);
+    await ensureEventHasActiveTicketType(eventId, tx);
 
     const event = await tx.event.update({
       where: { id: eventId },
@@ -456,14 +498,17 @@ export async function publishAdminEvent(eventId) {
 }
 
 export async function unpublishAdminEvent(eventId) {
-  await getExistingEvent(eventId);
-  const event = await prisma.event.update({
-    where: { id: eventId },
-    data: { status: "DRAFT" },
-    select: EVENT_SELECT
-  });
+  return runSerializableTransaction(async (tx) => {
+    const existingEvent = await getExistingEvent(eventId, tx);
+    ensureEventStatusTransition(existingEvent.status, "DRAFT");
+    const event = await tx.event.update({
+      where: { id: eventId },
+      data: { status: "DRAFT" },
+      select: EVENT_SELECT
+    });
 
-  return toEventResponse(event);
+    return toEventResponse(event);
+  });
 }
 
 export async function listPublishedEvents() {

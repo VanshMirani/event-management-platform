@@ -7,12 +7,12 @@ export default {
     extend: {
       colors: {
         ink: "#0f172a",
-        ember: "#ec4899",
+        ember: "#be185d",
         mint: "#0e7490",
         linen: "#f5f7fb",
         aurora: "#7c3aed",
         cyan: "#0e7490",
-        gold: "#f97316",
+        gold: "#c2410c",
         night: "#1e1b4b"
       },
       boxShadow: {

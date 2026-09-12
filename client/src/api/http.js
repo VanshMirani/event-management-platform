@@ -1,6 +1,7 @@
-const defaultApiUrl = import.meta.env.PROD ? "/api" : "http://localhost:5000/api";
+const viteEnv = import.meta.env ?? {};
+const defaultApiUrl = viteEnv.PROD ? "/api" : "http://localhost:5000/api";
 
-export const API_URL = (import.meta.env.VITE_API_URL ?? defaultApiUrl).replace(
+const API_URL = (viteEnv.VITE_API_URL ?? defaultApiUrl).replace(
   /\/$/,
   ""
 );
@@ -41,6 +42,38 @@ function buildUrl(path) {
   return `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+function getFallbackErrorMessage(status) {
+  if (status === 400) {
+    return "Please check the information and try again.";
+  }
+
+  if (status === 401) {
+    return "Please sign in to continue.";
+  }
+
+  if (status === 403) {
+    return "You do not have permission to complete this action.";
+  }
+
+  if (status === 404) {
+    return "The requested information could not be found.";
+  }
+
+  if (status === 409) {
+    return "This action could not be completed because the information has changed.";
+  }
+
+  if (status === 429) {
+    return "Too many requests were made. Please wait a moment and try again.";
+  }
+
+  if (status >= 500) {
+    return "The service is temporarily unavailable. Please try again shortly.";
+  }
+
+  return "We could not complete that request. Please try again.";
+}
+
 async function parseResponse(response) {
   const contentType = response.headers.get("content-type") ?? "";
 
@@ -77,8 +110,8 @@ async function refreshSession() {
   return refreshRequest;
 }
 
-export async function apiRequest(path, options = {}) {
-  const { skipAuthRefresh = false, ...requestOptions } = options;
+async function apiRequest(path, options = {}) {
+  const { responseType = "json", skipAuthRefresh = false, ...requestOptions } = options;
   const headers = new Headers(requestOptions.headers);
 
   if (requestOptions.body && !headers.has("Content-Type")) {
@@ -99,18 +132,24 @@ export async function apiRequest(path, options = {}) {
   ) {
     return apiRequest(path, {
       ...requestOptions,
+      responseType,
       skipAuthRefresh: true
     });
   }
 
-  const payload = await parseResponse(response);
+  const payload =
+    response.ok && responseType === "blob"
+      ? await response.blob()
+      : await parseResponse(response);
 
   if (!response.ok) {
     if (response.status === 401 && !refreshExcludedPaths.has(path)) {
       notifyUnauthorized();
     }
 
-    const error = new Error(payload?.message ?? `Request failed with status ${response.status}`);
+    const error = new Error(
+      payload?.message || getFallbackErrorMessage(response.status)
+    );
     error.status = response.status;
     error.details = payload?.details ?? null;
     throw error;

@@ -28,6 +28,11 @@ export async function updateAdminUserStatus(userId, status) {
   return response.data.user;
 }
 
+export async function updateAdminUserRole(userId, role) {
+  const response = await apiPatch(`/admin/users/${userId}/role`, { role });
+  return response.data.user;
+}
+
 export async function listAdminCategories() {
   const response = await apiGet("/admin/categories");
   return response.data.categories;

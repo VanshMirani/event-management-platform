@@ -6,12 +6,15 @@ import { releaseExpiredPendingBookings } from "./booking.service.js";
 import { generateTicketsForBooking } from "./ticket.service.js";
 import { createHttpError } from "../utils/httpError.js";
 import {
+  assertRazorpayTestCredentials,
   createRazorpayOrder,
   verifyRazorpayPaymentSignature,
   verifyRazorpayWebhookSignature
 } from "../utils/razorpay.js";
 
 const SERIALIZABLE_TRANSACTION_ATTEMPTS = 3;
+const RAZORPAY_ORDER_TRANSACTION_TIMEOUT_MS = 30_000;
+const EVENT_UNAVAILABLE_REASON = "Event is no longer available";
 
 const PAYMENT_SELECT = {
   id: true,
@@ -29,6 +32,11 @@ const PAYMENT_SELECT = {
   updatedAt: true
 };
 
+const PAYMENT_WITH_RAW_PAYLOAD_SELECT = {
+  ...PAYMENT_SELECT,
+  rawPayload: true
+};
+
 const BOOKING_PAYMENT_SELECT = {
   id: true,
   bookingNumber: true,
@@ -41,7 +49,7 @@ const BOOKING_PAYMENT_SELECT = {
   confirmedAt: true,
   expiresAt: true,
   payment: {
-    select: PAYMENT_SELECT
+    select: PAYMENT_WITH_RAW_PAYLOAD_SELECT
   },
   event: {
     select: {
@@ -82,8 +90,10 @@ function toPaymentResponse(payment) {
     return null;
   }
 
+  const { rawPayload: _rawPayload, ...safePayment } = payment;
+
   return {
-    ...payment,
+    ...safePayment,
     amount: toMoney(payment.amount)
   };
 }
@@ -125,38 +135,6 @@ function getRazorpayFailureReason(paymentEntity) {
   );
 }
 
-async function getOwnedBookingForPayment(bookingId, userId) {
-  const expiredBookingIds = await releaseExpiredPendingBookings({ bookingId, userId });
-
-  if (expiredBookingIds.includes(bookingId)) {
-    throw createHttpError(410, "Booking has expired");
-  }
-
-  const booking = await prisma.booking.findFirst({
-    where: {
-      id: bookingId,
-      userId
-    },
-    select: BOOKING_PAYMENT_SELECT
-  });
-
-  if (!booking) {
-    throw createHttpError(404, "Booking not found");
-  }
-
-  if (booking.status !== "PENDING") {
-    throw createHttpError(400, "Only pending bookings can be paid");
-  }
-
-  return booking;
-}
-
-function ensureRealPaymentMode() {
-  if (env.DEMO_MODE) {
-    throw createHttpError(404, "Real payment routes are disabled in demo mode");
-  }
-}
-
 async function getBookingPaymentForVerification(tx, bookingId, userId) {
   const booking = await tx.booking.findFirst({
     where: {
@@ -171,6 +149,115 @@ async function getBookingPaymentForVerification(tx, bookingId, userId) {
   }
 
   return booking;
+}
+
+function isEventUnavailable(booking, now) {
+  return booking.event.status !== "PUBLISHED" || booking.event.startsAt <= now;
+}
+
+async function cancelPendingBookingForUnavailableEvent(tx, booking, now) {
+  if (!isEventUnavailable(booking, now)) {
+    return false;
+  }
+
+  const cancelled = await tx.booking.updateMany({
+    where: {
+      id: booking.id,
+      status: "PENDING",
+      event: {
+        is: {
+          OR: [
+            {
+              status: {
+                not: "PUBLISHED"
+              }
+            },
+            {
+              startsAt: {
+                lte: now
+              }
+            }
+          ]
+        }
+      }
+    },
+    data: {
+      status: "CANCELLED",
+      cancelledAt: now
+    }
+  });
+
+  if (cancelled.count !== 1) {
+    return false;
+  }
+
+  for (const item of booking.items) {
+    await tx.ticketType.update({
+      where: {
+        id: item.ticketTypeId
+      },
+      data: {
+        availableQuantity: {
+          increment: item.quantity
+        }
+      }
+    });
+  }
+
+  await tx.payment.updateMany({
+    where: {
+      bookingId: booking.id,
+      status: {
+        not: "SUCCESS"
+      }
+    },
+    data: {
+      status: "FAILED",
+      failureReason: EVENT_UNAVAILABLE_REASON
+    }
+  });
+
+  return true;
+}
+
+function isReusableRazorpayOrder(booking) {
+  return Boolean(
+    booking.payment?.provider === "razorpay" &&
+      booking.payment.status === "CREATED" &&
+      booking.payment.providerOrderId &&
+      Number(booking.payment.amount) === Number(booking.totalAmount) &&
+      booking.payment.currency === booking.currency
+  );
+}
+
+function toRazorpayOrderResponse(booking) {
+  const rawOrder =
+    booking.payment?.rawPayload &&
+    typeof booking.payment.rawPayload === "object" &&
+    !Array.isArray(booking.payment.rawPayload)
+      ? booking.payment.rawPayload
+      : {};
+
+  return {
+    id: booking.payment.providerOrderId,
+    amount: amountToSmallestUnit(booking.totalAmount),
+    currency: booking.currency,
+    receipt:
+      typeof rawOrder.receipt === "string"
+        ? rawOrder.receipt
+        : booking.bookingNumber.slice(0, 40),
+    status: typeof rawOrder.status === "string" ? rawOrder.status : "created"
+  };
+}
+
+function toRazorpayOrderResult(booking, reused) {
+  return {
+    keyId: env.RAZORPAY_KEY_ID,
+    order: toRazorpayOrderResponse(booking),
+    bookingId: booking.id,
+    payment: toPaymentResponse(booking.payment),
+    reused
+  };
 }
 
 function ensurePaymentMatches(payment, orderId, paymentId) {
@@ -194,15 +281,106 @@ async function confirmBookingPayment(
   ensurePaymentMatches(booking.payment, orderId, paymentId);
 
   if (booking.payment.status === "SUCCESS") {
+    if (booking.status !== "CONFIRMED") {
+      throw createHttpError(409, "Payment is successful but booking is not confirmed");
+    }
+
     await generateTicketsForBooking(booking.id, tx);
-    return toPaymentBookingResponse(booking);
+    return {
+      booking: toPaymentBookingResponse(booking),
+      reason: null
+    };
   }
 
   if (booking.status !== "PENDING") {
-    throw createHttpError(400, "Only pending bookings can be confirmed");
+    return {
+      booking: null,
+      reason: "not_pending"
+    };
   }
 
   const now = new Date();
+  if (booking.expiresAt && booking.expiresAt <= now) {
+    return {
+      booking: null,
+      reason: "expired"
+    };
+  }
+
+  if (isEventUnavailable(booking, now)) {
+    await cancelPendingBookingForUnavailableEvent(tx, booking, now);
+    return {
+      booking: null,
+      reason: "event_unavailable"
+    };
+  }
+
+  const claimed = await tx.booking.updateMany({
+    where: {
+      id: booking.id,
+      status: "PENDING",
+      event: {
+        is: {
+          status: "PUBLISHED",
+          startsAt: {
+            gt: now
+          }
+        }
+      },
+      OR: [
+        {
+          expiresAt: null
+        },
+        {
+          expiresAt: {
+            gt: now
+          }
+        }
+      ]
+    },
+    data: {
+      status: "CONFIRMED",
+      confirmedAt: now,
+      expiresAt: null
+    }
+  });
+
+  if (claimed.count !== 1) {
+    const latestBooking = await tx.booking.findUnique({
+      where: {
+        id: booking.id
+      },
+      select: BOOKING_PAYMENT_SELECT
+    });
+
+    if (
+      latestBooking?.status === "PENDING" &&
+      isEventUnavailable(latestBooking, now)
+    ) {
+      await cancelPendingBookingForUnavailableEvent(tx, latestBooking, now);
+      return {
+        booking: null,
+        reason: "event_unavailable"
+      };
+    }
+
+    if (
+      latestBooking?.status === "PENDING" &&
+      latestBooking.expiresAt &&
+      latestBooking.expiresAt <= now
+    ) {
+      return {
+        booking: null,
+        reason: "expired"
+      };
+    }
+
+    return {
+      booking: null,
+      reason: "conflict"
+    };
+  }
+
   await tx.payment.update({
     where: {
       bookingId: booking.id
@@ -217,21 +395,19 @@ async function confirmBookingPayment(
     }
   });
 
-  const updatedBooking = await tx.booking.update({
+  const updatedBooking = await tx.booking.findUnique({
     where: {
       id: booking.id
-    },
-    data: {
-      status: "CONFIRMED",
-      confirmedAt: now,
-      expiresAt: null
     },
     select: BOOKING_PAYMENT_SELECT
   });
 
   await generateTicketsForBooking(updatedBooking.id, tx);
 
-  return toPaymentBookingResponse(updatedBooking);
+  return {
+    booking: toPaymentBookingResponse(updatedBooking),
+    reason: null
+  };
 }
 
 async function markWebhookPaymentFailed(tx, { orderId, paymentId, reason, rawPayload }) {
@@ -264,28 +440,96 @@ async function markWebhookPaymentFailed(tx, { orderId, paymentId, reason, rawPay
   return updated.count === 1;
 }
 
-export async function createRazorpayOrderForBooking({ bookingId, userId }) {
-  ensureRealPaymentMode();
-  let booking = await getOwnedBookingForPayment(bookingId, userId);
-  const amount = amountToSmallestUnit(booking.totalAmount);
+async function handleRazorpayOrderFailure(reason, { bookingId, userId }) {
+  if (!reason) {
+    return;
+  }
 
-  if (amount <= 0) {
+  if (reason === "expired") {
+    await releaseExpiredPendingBookings({ bookingId, userId });
+    throw createHttpError(410, "Booking has expired");
+  }
+
+  if (reason === "event_unavailable") {
+    throw createHttpError(409, EVENT_UNAVAILABLE_REASON);
+  }
+
+  if (reason === "zero_amount") {
     throw createHttpError(400, "Payment order cannot be created for zero amount");
   }
 
-  const order = await createRazorpayOrder({
-    amount,
-    currency: booking.currency,
-    receipt: booking.bookingNumber.slice(0, 40),
-    notes: {
-      bookingId: booking.id,
-      userId
-    }
-  });
+  throw createHttpError(400, "Only pending bookings can be paid");
+}
 
-  booking = await getOwnedBookingForPayment(bookingId, userId);
+async function inspectBookingForRazorpayOrder(tx, { bookingId, userId }) {
+  const booking = await getBookingPaymentForVerification(tx, bookingId, userId);
 
-  const payment = await prisma.payment.upsert({
+  if (booking.status !== "PENDING") {
+    return {
+      booking: null,
+      reason: "not_pending",
+      reused: false
+    };
+  }
+
+  const now = new Date();
+  if (booking.expiresAt && booking.expiresAt <= now) {
+    return {
+      booking: null,
+      reason: "expired",
+      reused: false
+    };
+  }
+
+  if (isEventUnavailable(booking, now)) {
+    await cancelPendingBookingForUnavailableEvent(tx, booking, now);
+    return {
+      booking: null,
+      reason: "event_unavailable",
+      reused: false
+    };
+  }
+
+  if (amountToSmallestUnit(booking.totalAmount) <= 0) {
+    return {
+      booking: null,
+      reason: "zero_amount",
+      reused: false
+    };
+  }
+
+  return {
+    booking,
+    reason: null,
+    reused: isReusableRazorpayOrder(booking)
+  };
+}
+
+async function lockBookingAndEventForRazorpayOrder(tx, { bookingId, userId }) {
+  const lockedBookings = await tx.$queryRaw`
+    SELECT "eventId"
+    FROM "Booking"
+    WHERE "id" = ${bookingId} AND "userId" = ${userId}
+    FOR UPDATE
+  `;
+
+  if (lockedBookings.length === 0) {
+    throw createHttpError(404, "Booking not found");
+  }
+
+  await tx.$queryRaw`
+    SELECT "id"
+    FROM "Event"
+    WHERE "id" = ${lockedBookings[0].eventId}
+    FOR SHARE
+  `;
+}
+
+async function storeRazorpayOrderPayment(
+  tx,
+  { booking, order, status = "CREATED", failureReason = null }
+) {
+  await tx.payment.upsert({
     where: {
       bookingId: booking.id
     },
@@ -293,7 +537,8 @@ export async function createRazorpayOrderForBooking({ bookingId, userId }) {
       bookingId: booking.id,
       provider: "razorpay",
       providerOrderId: order.id,
-      status: "CREATED",
+      status,
+      failureReason,
       amount: new Prisma.Decimal(booking.totalAmount),
       currency: booking.currency,
       rawPayload: order
@@ -303,32 +548,96 @@ export async function createRazorpayOrderForBooking({ bookingId, userId }) {
       providerOrderId: order.id,
       providerPaymentId: null,
       providerSignature: null,
-      status: "CREATED",
-      failureReason: null,
+      status,
+      failureReason,
       amount: new Prisma.Decimal(booking.totalAmount),
       currency: booking.currency,
       rawPayload: order,
       paidAt: null
-    },
-    select: PAYMENT_SELECT
+    }
   });
-
-  return {
-    keyId: env.RAZORPAY_KEY_ID,
-    order: {
-      id: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      receipt: order.receipt,
-      status: order.status
-    },
-    bookingId: booking.id,
-    payment: toPaymentResponse(payment)
-  };
 }
 
-async function confirmBookingWithoutPayment({ bookingId, userId, allowDemo }) {
-  const demoModeEnabled = allowDemo && env.DEMO_MODE;
+export async function createRazorpayOrderForBooking({ bookingId, userId }) {
+  assertRazorpayTestCredentials();
+  const expiredBookingIds = await releaseExpiredPendingBookings({ bookingId, userId });
+
+  if (expiredBookingIds.includes(bookingId)) {
+    throw createHttpError(410, "Booking has expired");
+  }
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      await lockBookingAndEventForRazorpayOrder(tx, { bookingId, userId });
+      let inspected = await inspectBookingForRazorpayOrder(tx, { bookingId, userId });
+
+      if (inspected.reason || inspected.reused) {
+        return inspected;
+      }
+
+      const orderBooking = inspected.booking;
+      const order = await createRazorpayOrder({
+        amount: amountToSmallestUnit(orderBooking.totalAmount),
+        currency: orderBooking.currency,
+        receipt: orderBooking.bookingNumber.slice(0, 40),
+        notes: {
+          bookingId: orderBooking.id,
+          userId
+        }
+      });
+
+      if (!order?.id) {
+        throw createHttpError(502, "Razorpay returned an invalid order");
+      }
+
+      inspected = await inspectBookingForRazorpayOrder(tx, { bookingId, userId });
+      if (inspected.reason === "event_unavailable") {
+        await storeRazorpayOrderPayment(tx, {
+          booking: orderBooking,
+          order,
+          status: "FAILED",
+          failureReason: EVENT_UNAVAILABLE_REASON
+        });
+        return inspected;
+      }
+
+      if (inspected.reason === "expired") {
+        await storeRazorpayOrderPayment(tx, {
+          booking: orderBooking,
+          order,
+          status: "FAILED",
+          failureReason: "Booking expired"
+        });
+        return inspected;
+      }
+
+      if (inspected.reason || inspected.reused) {
+        return inspected;
+      }
+
+      await storeRazorpayOrderPayment(tx, {
+        booking: inspected.booking,
+        order
+      });
+
+      const booking = await getBookingPaymentForVerification(tx, bookingId, userId);
+      return {
+        booking,
+        reason: null,
+        reused: false
+      };
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      timeout: RAZORPAY_ORDER_TRANSACTION_TIMEOUT_MS
+    }
+  );
+
+  await handleRazorpayOrderFailure(result.reason, { bookingId, userId });
+  return toRazorpayOrderResult(result.booking, result.reused);
+}
+
+async function confirmBookingWithoutPayment({ bookingId, userId }) {
   const expiredBookingIds = await releaseExpiredPendingBookings({ bookingId, userId });
 
   if (expiredBookingIds.includes(bookingId)) {
@@ -342,8 +651,7 @@ async function confirmBookingWithoutPayment({ bookingId, userId, allowDemo }) {
     if (
       booking.status === "CONFIRMED" &&
       booking.payment?.status === "SUCCESS" &&
-      (booking.payment.provider === "free" ||
-        (demoModeEnabled && booking.payment.provider === "demo"))
+      booking.payment.provider === "free"
     ) {
       await generateTicketsForBooking(booking.id, tx);
       return {
@@ -359,7 +667,7 @@ async function confirmBookingWithoutPayment({ bookingId, userId, allowDemo }) {
       };
     }
 
-    if (!isFreeBooking && !demoModeEnabled) {
+    if (!isFreeBooking) {
       return {
         booking: null,
         reason: "payment_required"
@@ -376,43 +684,7 @@ async function confirmBookingWithoutPayment({ bookingId, userId, allowDemo }) {
     }
 
     if (booking.event.status !== "PUBLISHED" || booking.event.startsAt <= now) {
-      const cancelled = await tx.booking.updateMany({
-        where: {
-          id: booking.id,
-          userId,
-          status: "PENDING"
-        },
-        data: {
-          status: "CANCELLED",
-          cancelledAt: now
-        }
-      });
-
-      if (cancelled.count === 1) {
-        for (const item of booking.items) {
-          await tx.ticketType.update({
-            where: { id: item.ticketTypeId },
-            data: {
-              availableQuantity: {
-                increment: item.quantity
-              }
-            }
-          });
-        }
-
-        await tx.payment.updateMany({
-          where: {
-            bookingId: booking.id,
-            status: {
-              not: "SUCCESS"
-            }
-          },
-          data: {
-            status: "FAILED",
-            failureReason: "Event is no longer available"
-          }
-        });
-      }
+      await cancelPendingBookingForUnavailableEvent(tx, booking, now);
 
       return {
         booking: null,
@@ -450,14 +722,42 @@ async function confirmBookingWithoutPayment({ bookingId, userId, allowDemo }) {
     });
 
     if (claimed.count !== 1) {
+      const latestBooking = await tx.booking.findUnique({
+        where: {
+          id: booking.id
+        },
+        select: BOOKING_PAYMENT_SELECT
+      });
+
+      if (
+        latestBooking?.status === "PENDING" &&
+        isEventUnavailable(latestBooking, now)
+      ) {
+        await cancelPendingBookingForUnavailableEvent(tx, latestBooking, now);
+        return {
+          booking: null,
+          reason: "event_unavailable"
+        };
+      }
+
+      if (
+        latestBooking?.status === "PENDING" &&
+        latestBooking.expiresAt &&
+        latestBooking.expiresAt <= now
+      ) {
+        return {
+          booking: null,
+          reason: "expired"
+        };
+      }
+
       return {
         booking: null,
         reason: "conflict"
       };
     }
 
-    const provider = isFreeBooking ? "free" : "demo";
-    const providerPaymentId = `${provider}_${randomUUID()}`;
+    const providerPaymentId = `free_${randomUUID()}`;
 
     await tx.payment.upsert({
       where: {
@@ -465,20 +765,19 @@ async function confirmBookingWithoutPayment({ bookingId, userId, allowDemo }) {
       },
       create: {
         bookingId: booking.id,
-        provider,
+        provider: "free",
         providerPaymentId,
         status: "SUCCESS",
         amount: new Prisma.Decimal(booking.totalAmount),
         currency: booking.currency,
         rawPayload: {
-          demoMode: provider === "demo",
           noCharge: true,
-          freeBooking: isFreeBooking
+          freeBooking: true
         },
         paidAt: now
       },
       update: {
-        provider,
+        provider: "free",
         providerOrderId: null,
         providerPaymentId,
         providerSignature: null,
@@ -487,9 +786,8 @@ async function confirmBookingWithoutPayment({ bookingId, userId, allowDemo }) {
         amount: new Prisma.Decimal(booking.totalAmount),
         currency: booking.currency,
         rawPayload: {
-          demoMode: provider === "demo",
           noCharge: true,
-          freeBooking: isFreeBooking
+          freeBooking: true
         },
         paidAt: now
       }
@@ -530,20 +828,11 @@ async function confirmBookingWithoutPayment({ bookingId, userId, allowDemo }) {
   return result.booking;
 }
 
-export async function confirmDemoBooking(input) {
-  if (!env.DEMO_MODE) {
-    throw createHttpError(404, "Payment route not found");
-  }
-
-  return confirmBookingWithoutPayment({ ...input, allowDemo: true });
-}
-
 export async function confirmFreeBooking(input) {
-  return confirmBookingWithoutPayment({ ...input, allowDemo: false });
+  return confirmBookingWithoutPayment(input);
 }
 
 export async function verifyRazorpayPayment(input, userId) {
-  ensureRealPaymentMode();
   const isValidSignature = verifyRazorpayPaymentSignature({
     orderId: input.razorpay_order_id,
     paymentId: input.razorpay_payment_id,
@@ -563,42 +852,39 @@ export async function verifyRazorpayPayment(input, userId) {
     throw createHttpError(410, "Booking has expired");
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await runSerializableTransaction(async (tx) => {
     const pendingBooking = await getBookingPaymentForVerification(tx, input.bookingId, userId);
-
-    if (
-      pendingBooking.status === "PENDING" &&
-      pendingBooking.expiresAt &&
-      pendingBooking.expiresAt <= new Date()
-    ) {
-      return {
-        expired: true,
-        booking: null
-      };
-    }
+    const confirmation = await confirmBookingPayment(tx, {
+      booking: pendingBooking,
+      orderId: input.razorpay_order_id,
+      paymentId: input.razorpay_payment_id,
+      signature: input.razorpay_signature,
+      rawPayload: input
+    });
 
     return {
-      expired: false,
-      booking: await confirmBookingPayment(tx, {
-        booking: pendingBooking,
-        orderId: input.razorpay_order_id,
-        paymentId: input.razorpay_payment_id,
-        signature: input.razorpay_signature,
-        rawPayload: input
-      })
+      ...confirmation,
+      bookingId: pendingBooking.id
     };
   });
 
-  if (result.expired) {
+  if (result.reason === "expired") {
     await releaseExpiredPendingBookings({ bookingId: input.bookingId, userId });
     throw createHttpError(410, "Booking has expired");
+  }
+
+  if (result.reason === "event_unavailable") {
+    throw createHttpError(409, EVENT_UNAVAILABLE_REASON);
+  }
+
+  if (!result.booking) {
+    throw createHttpError(409, "Booking is no longer available for confirmation");
   }
 
   return result.booking;
 }
 
 export async function handleRazorpayWebhook({ rawBody, signature, payload }) {
-  ensureRealPaymentMode();
   const isValidSignature = verifyRazorpayWebhookSignature({
     rawBody,
     signature
@@ -658,7 +944,7 @@ export async function handleRazorpayWebhook({ rawBody, signature, payload }) {
       };
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await runSerializableTransaction(async (tx) => {
       const payment = await tx.payment.findUnique({
         where: {
           providerOrderId: orderId
@@ -673,35 +959,26 @@ export async function handleRazorpayWebhook({ rawBody, signature, payload }) {
 
       if (!payment) {
         return {
-          expired: false,
-          booking: null
+          booking: null,
+          bookingId: null,
+          reason: "payment_not_found"
         };
       }
 
-      if (
-        payment.booking.status === "PENDING" &&
-        payment.booking.expiresAt &&
-        payment.booking.expiresAt <= new Date()
-      ) {
-        return {
-          expired: true,
-          booking: null,
-          bookingId: payment.booking.id
-        };
-      }
+      const confirmation = await confirmBookingPayment(tx, {
+        booking: payment.booking,
+        orderId,
+        paymentId: paymentId ?? payment.providerPaymentId,
+        rawPayload: payload
+      });
 
       return {
-        expired: false,
-        booking: await confirmBookingPayment(tx, {
-          booking: payment.booking,
-          orderId,
-          paymentId: paymentId ?? payment.providerPaymentId,
-          rawPayload: payload
-        })
+        ...confirmation,
+        bookingId: payment.booking.id
       };
     });
 
-    if (result.expired) {
+    if (result.reason === "expired") {
       await releaseExpiredPendingBookings({ bookingId: result.bookingId });
 
       return {
@@ -712,10 +989,20 @@ export async function handleRazorpayWebhook({ rawBody, signature, payload }) {
       };
     }
 
+    if (result.reason === "event_unavailable") {
+      return {
+        processed: false,
+        event: payload.event,
+        booking: null,
+        reason: "event_unavailable"
+      };
+    }
+
     return {
       processed: Boolean(result.booking),
       event: payload.event,
-      booking: result.booking
+      booking: result.booking,
+      ...(result.reason ? { reason: result.reason } : {})
     };
   }
 

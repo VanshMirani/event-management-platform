@@ -75,7 +75,7 @@ if (env.NODE_ENV === "production") {
   });
 } else {
   app.get("/", (_req, res) => {
-    return sendSuccess(res, { name: "Event Management API" }, "Welcome");
+    return sendSuccess(res, { name: "EventFlow API" }, "Welcome");
   });
 }
 

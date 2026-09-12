@@ -28,7 +28,7 @@ export const adminPaymentListQuerySchema = z.object({
     page: z.string().optional(),
     limit: z.string().optional(),
     status: paymentStatusSchema.optional(),
-    provider: z.string().trim().min(1).optional(),
+    provider: z.enum(["free", "razorpay"]).optional(),
     bookingId: z.string().min(1).optional(),
     search: z.string().trim().optional(),
     dateFrom: z.string().optional(),
@@ -71,7 +71,7 @@ export const updateUserRoleSchema = z.object({
   }),
   body: z
     .object({
-      role: z.enum(["USER", "ADMIN", "ORGANIZER"])
+      role: z.enum(["USER", "ADMIN"])
     })
     .strict()
 });

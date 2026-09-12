@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/db.js";
 import { createHttpError } from "../utils/httpError.js";
 import { createSlug } from "../utils/slug.js";
@@ -13,6 +14,12 @@ const SAFE_USER_SELECT = {
   avatarUrl: true,
   createdAt: true,
   updatedAt: true
+};
+
+const ADMIN_USER_TRANSACTION_ATTEMPTS = 3;
+const ACTIVE_ADMIN_FILTER = {
+  role: "ADMIN",
+  status: "ACTIVE"
 };
 
 const CATEGORY_SELECT = {
@@ -494,15 +501,70 @@ function isUniqueConstraintError(error, field) {
   return error?.code === "P2002" && error?.meta?.target?.includes(field);
 }
 
-async function ensureUserExists(userId) {
-  const user = await prisma.user.findUnique({
+async function runAdminUserTransaction(callback) {
+  for (let attempt = 1; attempt <= ADMIN_USER_TRANSACTION_ATTEMPTS; attempt += 1) {
+    try {
+      return await prisma.$transaction(callback, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      });
+    } catch (error) {
+      if (error?.code !== "P2034" || attempt === ADMIN_USER_TRANSACTION_ATTEMPTS) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("Unable to complete admin user transaction");
+}
+
+async function getUserForAdminMutation(db, userId) {
+  const user = await db.user.findUnique({
     where: { id: userId },
-    select: { id: true }
+    select: SAFE_USER_SELECT
   });
 
   if (!user) {
     throw createHttpError(404, "User not found");
   }
+
+  return user;
+}
+
+async function ensureActiveAdminActor(db, adminId) {
+  const admin = await db.user.findUnique({
+    where: { id: adminId },
+    select: SAFE_USER_SELECT
+  });
+
+  if (!admin || admin.role !== "ADMIN" || admin.status !== "ACTIVE") {
+    throw createHttpError(403, "Admin access required");
+  }
+
+  return admin;
+}
+
+async function ensureActiveAdminRemains(db, user, { role = user.role, status = user.status }) {
+  const currentlyActiveAdmin = user.role === "ADMIN" && user.status === "ACTIVE";
+  const remainsActiveAdmin = role === "ADMIN" && status === "ACTIVE";
+
+  if (!currentlyActiveAdmin || remainsActiveAdmin) {
+    return;
+  }
+
+  const activeAdminCount = await db.user.count({
+    where: ACTIVE_ADMIN_FILTER
+  });
+
+  if (activeAdminCount <= 1) {
+    throw createHttpError(409, "At least one active admin account is required");
+  }
+}
+
+function createAuditContext({ ipAddress = null, userAgent = null } = {}) {
+  return {
+    ipAddress: ipAddress || null,
+    userAgent: userAgent || null
+  };
 }
 
 async function ensureCategoryExists(categoryId) {
@@ -618,31 +680,83 @@ export async function getUser(userId) {
   return user;
 }
 
-export async function updateUserStatus(userId, status, currentAdminId) {
-  await ensureUserExists(userId);
+export async function updateUserStatus(userId, status, currentAdminId, auditContext = {}) {
+  return runAdminUserTransaction(async (tx) => {
+    const actingAdmin = await ensureActiveAdminActor(tx, currentAdminId);
+    const user =
+      userId === actingAdmin.id ? actingAdmin : await getUserForAdminMutation(tx, userId);
 
-  if (userId === currentAdminId && status === "BLOCKED") {
-    throw createHttpError(400, "Admins cannot block their own account");
-  }
+    if (user.status === status) {
+      return user;
+    }
 
-  return prisma.user.update({
-    where: { id: userId },
-    data: { status },
-    select: SAFE_USER_SELECT
+    if (user.id === actingAdmin.id && status === "BLOCKED") {
+      throw createHttpError(400, "Admins cannot block their own account");
+    }
+
+    await ensureActiveAdminRemains(tx, user, { status });
+
+    const updatedUser = await tx.user.update({
+      where: { id: user.id },
+      data: { status },
+      select: SAFE_USER_SELECT
+    });
+
+    await tx.auditLog.create({
+      data: {
+        adminId: actingAdmin.id,
+        action: "USER_STATUS_UPDATED",
+        entityType: "User",
+        entityId: user.id,
+        metadata: {
+          previousStatus: user.status,
+          nextStatus: status
+        },
+        ...createAuditContext(auditContext)
+      }
+    });
+
+    return updatedUser;
   });
 }
 
-export async function updateUserRole(userId, role, currentAdminId) {
-  await ensureUserExists(userId);
+export async function updateUserRole(userId, role, currentAdminId, auditContext = {}) {
+  return runAdminUserTransaction(async (tx) => {
+    const actingAdmin = await ensureActiveAdminActor(tx, currentAdminId);
+    const user =
+      userId === actingAdmin.id ? actingAdmin : await getUserForAdminMutation(tx, userId);
 
-  if (userId === currentAdminId && role !== "ADMIN") {
-    throw createHttpError(400, "Admins cannot remove their own admin role");
-  }
+    if (user.role === role) {
+      return user;
+    }
 
-  return prisma.user.update({
-    where: { id: userId },
-    data: { role },
-    select: SAFE_USER_SELECT
+    if (user.id === actingAdmin.id && role !== "ADMIN") {
+      throw createHttpError(400, "Admins cannot remove their own admin role");
+    }
+
+    await ensureActiveAdminRemains(tx, user, { role });
+
+    const updatedUser = await tx.user.update({
+      where: { id: user.id },
+      data: { role },
+      select: SAFE_USER_SELECT
+    });
+
+    await tx.auditLog.create({
+      data: {
+        adminId: actingAdmin.id,
+        action: "USER_ROLE_UPDATED",
+        entityType: "User",
+        entityId: user.id,
+        metadata: {
+          previousRole: user.role,
+          nextRole: role
+        },
+        ...createAuditContext(auditContext)
+      }
+    });
+
+    return updatedUser;
   });
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createAdminCategory,
   deleteAdminCategory,
@@ -29,6 +29,8 @@ function validateCategoryForm(form) {
 export function AdminCategoriesPage() {
   useDocumentTitle("Admin Categories | EventFlow");
 
+  const formHeadingRef = useRef(null);
+
   const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editingCategoryId, setEditingCategoryId] = useState("");
@@ -37,6 +39,7 @@ export function AdminCategoriesPage() {
   const [deletingCategoryId, setDeletingCategoryId] = useState("");
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   async function loadCategories() {
     setIsLoading(true);
@@ -58,6 +61,8 @@ export function AdminCategoriesPage() {
 
   function updateField(event) {
     const { name, value } = event.target;
+    setFormError("");
+    setSuccessMessage("");
     setForm((current) => ({
       ...current,
       [name]: value
@@ -71,6 +76,8 @@ export function AdminCategoriesPage() {
       description: category.description ?? ""
     });
     setFormError("");
+    setSuccessMessage("");
+    window.requestAnimationFrame(() => formHeadingRef.current?.focus());
   }
 
   function resetForm() {
@@ -102,6 +109,7 @@ export function AdminCategoriesPage() {
             category.id === updatedCategory.id ? updatedCategory : category
           )
         );
+        setSuccessMessage("Category updated.");
       } else {
         const createdCategory = await createAdminCategory({
           name: form.name,
@@ -112,6 +120,7 @@ export function AdminCategoriesPage() {
             first.name.localeCompare(second.name)
           )
         );
+        setSuccessMessage("Category added.");
       }
 
       resetForm();
@@ -141,8 +150,10 @@ export function AdminCategoriesPage() {
       if (editingCategoryId === category.id) {
         resetForm();
       }
+      setSuccessMessage("Category deleted.");
     } catch (deleteError) {
       setFormError(deleteError.message);
+      window.requestAnimationFrame(() => formHeadingRef.current?.focus());
     } finally {
       setDeletingCategoryId("");
     }
@@ -150,7 +161,7 @@ export function AdminCategoriesPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <AdminNav />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
@@ -161,7 +172,11 @@ export function AdminCategoriesPage() {
             <p className="section-kicker">
               Categories
             </p>
-            <h1 className="mt-2 text-2xl font-extrabold tracking-normal text-ink">
+            <h1
+              className="mt-2 text-2xl font-extrabold tracking-normal text-ink outline-none"
+              ref={formHeadingRef}
+              tabIndex="-1"
+            >
               {editingCategoryId ? "Edit category" : "Add category"}
             </h1>
 
@@ -172,8 +187,10 @@ export function AdminCategoriesPage() {
               <input
                 className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
                 id="name"
+                maxLength="120"
                 name="name"
                 onChange={updateField}
+                required
                 type="text"
                 value={form.name}
               />
@@ -186,6 +203,7 @@ export function AdminCategoriesPage() {
               <textarea
                 className="mt-2 min-h-[7rem] w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
                 id="description"
+                maxLength="500"
                 name="description"
                 onChange={updateField}
                 value={form.description}
@@ -193,8 +211,14 @@ export function AdminCategoriesPage() {
             </div>
 
             {formError ? (
-              <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember">
+              <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember" role="alert">
                 {formError}
+              </p>
+            ) : null}
+
+            {successMessage ? (
+              <p className="mt-4 rounded-lg border border-mint/20 bg-mint/10 px-4 py-3 text-sm font-semibold text-mint" role="status">
+                {successMessage}
               </p>
             ) : null}
 
@@ -223,7 +247,7 @@ export function AdminCategoriesPage() {
               <h2 className="text-xl font-extrabold tracking-normal text-ink">
                 Category list
               </h2>
-              <span className="text-sm font-bold text-ink/55">
+              <span className="text-sm font-bold text-ink/65">
                 {categories.length} total
               </span>
             </div>
@@ -255,7 +279,7 @@ export function AdminCategoriesPage() {
                     >
                       <div>
                         <p className="font-bold text-ink">{category.name}</p>
-                        <p className="mt-1 text-sm text-ink/55">{category.slug}</p>
+                        <p className="mt-1 text-sm text-ink/65">{category.slug}</p>
                         {category.description ? (
                           <p className="mt-2 text-sm leading-6 text-ink/65">
                             {category.description}
@@ -265,6 +289,7 @@ export function AdminCategoriesPage() {
 
                       <div className="flex flex-wrap gap-2">
                         <button
+                          aria-label={`Edit ${category.name} category`}
                           className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
                           onClick={() => startEditing(category)}
                           type="button"
@@ -272,7 +297,8 @@ export function AdminCategoriesPage() {
                           Edit
                         </button>
                         <button
-                          className="danger-button px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
+                          aria-label={`Delete ${category.name} category`}
+                          className="danger-button px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/60"
                           disabled={isDeleting}
                           onClick={() => handleDelete(category)}
                           type="button"

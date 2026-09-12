@@ -35,7 +35,7 @@ export function AdminBookingDetailPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <AdminNav />
 
         {isLoading ? (
@@ -60,12 +60,12 @@ export function AdminBookingDetailPage() {
                 <p className="section-kicker">
                   Booking
                 </p>
-                <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
+                <h1 className="mt-2 break-all text-3xl font-extrabold tracking-normal text-ink">
                   {booking.bookingCode}
                 </h1>
                 <div className="mt-5 grid gap-4 sm:grid-cols-3">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
+                    <p className="text-xs font-bold uppercase tracking-wide text-ink/60">
                       Status
                     </p>
                     <div className="mt-1">
@@ -73,7 +73,7 @@ export function AdminBookingDetailPage() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
+                    <p className="text-xs font-bold uppercase tracking-wide text-ink/60">
                       Final amount
                     </p>
                     <p className="mt-1 font-bold text-ink">
@@ -81,7 +81,7 @@ export function AdminBookingDetailPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
+                    <p className="text-xs font-bold uppercase tracking-wide text-ink/60">
                       Created
                     </p>
                     <p className="mt-1 font-bold text-ink">
@@ -145,9 +145,11 @@ export function AdminBookingDetailPage() {
                     <div className="mt-3">
                       <StatusBadge status={booking.payment.status} />
                     </div>
-                    <p className="mt-1 text-sm text-ink/65">
-                      {booking.payment.providerOrderId}
-                    </p>
+                    {booking.payment.providerOrderId ? (
+                      <p className="mt-1 text-sm text-ink/65">
+                        {booking.payment.providerOrderId}
+                      </p>
+                    ) : null}
                     <Link
                       className="mt-4 inline-flex text-sm font-bold text-mint hover:text-ember"
                       to={`/admin/payments/${booking.payment.id}`}
@@ -156,7 +158,7 @@ export function AdminBookingDetailPage() {
                     </Link>
                   </>
                 ) : (
-                  <p className="mt-3 text-sm font-semibold text-ink/55">No payment yet.</p>
+                  <p className="mt-3 text-sm font-semibold text-ink/65">No payment yet.</p>
                 )}
               </div>
             </aside>

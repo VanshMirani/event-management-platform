@@ -27,7 +27,27 @@ function normalizeOptionalText(value) {
   return normalized || null;
 }
 
-function toTicketTypeResponse(ticketType) {
+function getTicketTypeSaleStatus(ticketType, now) {
+  if (!ticketType.isActive) {
+    return "INACTIVE";
+  }
+
+  if (ticketType.salesStartAt && ticketType.salesStartAt > now) {
+    return "UPCOMING";
+  }
+
+  if (ticketType.salesEndAt && ticketType.salesEndAt < now) {
+    return "ENDED";
+  }
+
+  if (ticketType.availableQuantity <= 0) {
+    return "SOLD_OUT";
+  }
+
+  return "AVAILABLE";
+}
+
+function toTicketTypeResponse(ticketType, now = new Date()) {
   return {
     id: ticketType.id,
     eventId: ticketType.eventId,
@@ -42,6 +62,7 @@ function toTicketTypeResponse(ticketType) {
     saleStartAt: ticketType.salesStartAt,
     saleEndAt: ticketType.salesEndAt,
     status: ticketType.isActive ? "ACTIVE" : "INACTIVE",
+    saleStatus: getTicketTypeSaleStatus(ticketType, now),
     createdAt: ticketType.createdAt,
     updatedAt: ticketType.updatedAt
   };
@@ -72,6 +93,7 @@ async function ensureEventExists(eventId, db = prisma) {
     where: { id: eventId },
     select: {
       id: true,
+      status: true,
       startsAt: true,
       endsAt: true,
       capacity: true
@@ -215,6 +237,60 @@ async function ensureTicketTypeRules({
   });
 }
 
+function hasUsableInventory({ isActive, availableQuantity }) {
+  return isActive && availableQuantity > 0;
+}
+
+async function ensurePublishedEventRetainsUsableTicketType({
+  event,
+  existingTicketType,
+  nextIsActive = false,
+  nextAvailableQuantity = 0,
+  db
+}) {
+  const removesActiveTicketType = existingTicketType.isActive && !nextIsActive;
+  const removesUsableInventory =
+    hasUsableInventory(existingTicketType) &&
+    !hasUsableInventory({
+      isActive: nextIsActive,
+      availableQuantity: nextAvailableQuantity
+    });
+
+  if (
+    event.status !== "PUBLISHED" ||
+    (!removesActiveTicketType && !removesUsableInventory)
+  ) {
+    return;
+  }
+
+  const replacementTicketType = await db.ticketType.findFirst({
+    where: {
+      eventId: event.id,
+      id: {
+        not: existingTicketType.id
+      },
+      isActive: true,
+      ...(removesUsableInventory
+        ? {
+            availableQuantity: {
+              gt: 0
+            }
+          }
+        : {})
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (!replacementTicketType) {
+    throw createHttpError(
+      409,
+      "Published events must keep at least one active ticket type with available inventory"
+    );
+  }
+}
+
 export async function createAdminTicketType(input) {
   try {
     return await runSerializableTransaction(async (tx) => {
@@ -306,6 +382,15 @@ export async function updateAdminTicketType(ticketTypeId, input) {
         db: tx
       });
 
+      await ensurePublishedEventRetainsUsableTicketType({
+        event,
+        existingTicketType,
+        nextIsActive: data.isActive ?? existingTicketType.isActive,
+        nextAvailableQuantity:
+          data.availableQuantity ?? existingTicketType.availableQuantity,
+        db: tx
+      });
+
       const ticketType = await tx.ticketType.update({
         where: { id: ticketTypeId },
         data,
@@ -320,11 +405,22 @@ export async function updateAdminTicketType(ticketTypeId, input) {
 }
 
 export async function deleteAdminTicketType(ticketTypeId) {
-  await getExistingTicketType(ticketTypeId);
+  await releaseExpiredPendingBookings({ ticketTypeId });
 
   try {
-    await prisma.ticketType.delete({
-      where: { id: ticketTypeId }
+    await runSerializableTransaction(async (tx) => {
+      const existingTicketType = await getExistingTicketType(ticketTypeId, tx);
+      const event = await ensureEventExists(existingTicketType.eventId, tx);
+
+      await ensurePublishedEventRetainsUsableTicketType({
+        event,
+        existingTicketType,
+        db: tx
+      });
+
+      await tx.ticketType.delete({
+        where: { id: ticketTypeId }
+      });
     });
   } catch (error) {
     if (error?.code === "P2003") {
@@ -359,18 +455,7 @@ export async function listPublicTicketTypesForEventSlug(slug) {
   const ticketTypes = await prisma.ticketType.findMany({
     where: {
       eventId: event.id,
-      isActive: true,
-      availableQuantity: {
-        gt: 0
-      },
-      AND: [
-        {
-          OR: [{ salesStartAt: null }, { salesStartAt: { lte: now } }]
-        },
-        {
-          OR: [{ salesEndAt: null }, { salesEndAt: { gte: now } }]
-        }
-      ]
+      isActive: true
     },
     orderBy: {
       price: "asc"
@@ -378,5 +463,5 @@ export async function listPublicTicketTypesForEventSlug(slug) {
     select: TICKET_TYPE_SELECT
   });
 
-  return mapTicketTypeList(ticketTypes);
+  return ticketTypes.map((ticketType) => toTicketTypeResponse(ticketType, now));
 }

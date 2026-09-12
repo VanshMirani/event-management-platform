@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getBooking } from "../api/bookings.js";
 import {
-  confirmDemoPayment,
   confirmFreeBooking,
   createRazorpayOrder,
   verifyRazorpayPayment
@@ -15,10 +14,6 @@ import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
 import { formatDateTime } from "../utils/formatDate.js";
 import { loadRazorpayCheckoutScript } from "../utils/razorpay.js";
-
-const isDemoCheckoutEnabled = ["1", "true", "yes"].includes(
-  String(import.meta.env.VITE_ENABLE_DEMO_CHECKOUT ?? "").toLowerCase()
-);
 
 export function CheckoutPage() {
   const { bookingId } = useParams();
@@ -54,19 +49,14 @@ export function CheckoutPage() {
   const canPay = booking?.status === "PENDING";
   const isFreeBooking = Number(booking?.totalAmount ?? 0) === 0;
 
-  function showPaymentSuccess(confirmedBooking, isDemo = false) {
+  function showPaymentSuccess(confirmedBooking) {
     const confirmedBookingId = confirmedBooking?.id ?? booking.id;
     const query = new URLSearchParams({ bookingId: confirmedBookingId });
-
-    if (isDemo) {
-      query.set("demo", "1");
-    }
 
     navigate(`/payment-success?${query.toString()}`, {
       replace: true,
       state: {
-        bookingId: confirmedBookingId,
-        isDemo
+        bookingId: confirmedBookingId
       }
     });
   }
@@ -82,7 +72,7 @@ export function CheckoutPage() {
     });
   }
 
-  async function handleDemoPayment() {
+  async function handleFreeConfirmation() {
     if (!booking) {
       return;
     }
@@ -91,13 +81,11 @@ export function CheckoutPage() {
     setPaymentError("");
 
     try {
-      const confirmedBooking = isFreeBooking
-        ? await confirmFreeBooking(booking.id)
-        : await confirmDemoPayment(booking.id);
+      const confirmedBooking = await confirmFreeBooking(booking.id);
       setBooking(confirmedBooking);
-      showPaymentSuccess(confirmedBooking, isDemoCheckoutEnabled && !isFreeBooking);
-    } catch (demoError) {
-      setPaymentError(demoError.message);
+      showPaymentSuccess(confirmedBooking);
+    } catch (confirmationError) {
+      setPaymentError(confirmationError.message);
     } finally {
       setIsPaying(false);
     }
@@ -184,7 +172,7 @@ export function CheckoutPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-5xl px-5 py-10 lg:py-14">
+      <section className="site-shell max-w-5xl py-10 lg:py-14">
         <p className="section-kicker">
           Checkout
         </p>
@@ -271,7 +259,7 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              <p className="mt-5 text-xs font-semibold text-ink/50">
+              <p className="mt-5 text-xs font-semibold text-ink/65">
                 Expires at {formatDateTime(booking.expiresAt)}
               </p>
               {isFreeBooking ? (
@@ -282,16 +270,6 @@ export function CheckoutPage() {
                   <p className="font-extrabold text-cyan">Free booking</p>
                   <p className="mt-1 font-semibold text-ink/70">
                     No payment is required for this ticket.
-                  </p>
-                </div>
-              ) : isDemoCheckoutEnabled ? (
-                <div
-                  className="mt-4 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-3 text-sm text-ink"
-                  role="note"
-                >
-                  <p className="font-extrabold text-cyan">Demo checkout</p>
-                  <p className="mt-1 font-semibold text-ink/70">
-                    This confirms the booking for testing only. No real payment or charge is made.
                   </p>
                 </div>
               ) : (
@@ -316,25 +294,19 @@ export function CheckoutPage() {
               <button
                 className="action-primary mt-5 w-full px-5 py-3 text-sm font-extrabold disabled:cursor-not-allowed"
                 disabled={!canPay || isPaying}
-                onClick={
-                  isFreeBooking || isDemoCheckoutEnabled ? handleDemoPayment : handlePayment
-                }
+                onClick={isFreeBooking ? handleFreeConfirmation : handlePayment}
                 type="button"
               >
                 {isPaying
                   ? "Processing..."
                   : isFreeBooking
                     ? "Confirm free booking"
-                    : isDemoCheckoutEnabled
-                      ? "Confirm demo booking"
-                      : "Pay with Razorpay (Test)"}
+                    : "Pay with Razorpay (Test)"}
               </button>
-              <p className="mt-3 text-xs font-semibold text-ink/50">
+              <p className="mt-3 text-xs font-semibold text-ink/65">
                 {isFreeBooking
                   ? "Free bookings are confirmed without opening Razorpay."
-                  : isDemoCheckoutEnabled
-                    ? "Demo confirmation is available only when explicitly enabled for this environment."
-                    : "Test payments are verified by the backend before your booking is confirmed."}
+                  : "Your booking is confirmed only after the Test Mode payment is verified."}
               </p>
               <Link
                 className="mt-5 inline-flex text-sm font-bold text-mint hover:text-ember"

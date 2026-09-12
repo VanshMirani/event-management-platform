@@ -1,6 +1,5 @@
 import { Router } from "express";
 import {
-  postDemoBookingConfirmation,
   postFreeBookingConfirmation,
   postRazorpayOrder,
   verifyRazorpayOrderPayment
@@ -20,13 +19,6 @@ router.post(
   authMiddleware,
   validateRequest(confirmBookingSchema),
   postFreeBookingConfirmation
-);
-
-router.post(
-  "/demo-confirm",
-  authMiddleware,
-  validateRequest(confirmBookingSchema),
-  postDemoBookingConfirmation
 );
 
 router.post(

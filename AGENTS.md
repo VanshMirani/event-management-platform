@@ -13,8 +13,6 @@ Stack:
 - Styling: Tailwind CSS
 - Authentication: JWT with httpOnly cookies
 - Validation: Zod
-- File upload: Cloudinary
-- Email: Nodemailer or SMTP
 - QR tickets: qrcode package
 
 ## JavaScript-only rule
@@ -93,3 +91,4 @@ npm run lint
 npm test
 npx prisma migrate dev
 npx prisma studio
+```

@@ -1,4 +1,4 @@
-export function getDashboardPath(user) {
+function getDashboardPath(user) {
   return user?.role === "ADMIN" ? "/admin/dashboard" : "/user/dashboard";
 }
 

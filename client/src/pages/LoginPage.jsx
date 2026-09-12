@@ -42,6 +42,7 @@ export function LoginPage() {
 
   function updateField(event) {
     const { name, value } = event.target;
+    setError("");
     setForm((current) => ({
       ...current,
       [name]: value
@@ -78,27 +79,27 @@ export function LoginPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:py-16">
+      <section className="site-shell grid gap-8 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:py-16">
         <div className="hero-panel rounded-lg p-7">
           <p className="text-sm font-extrabold uppercase tracking-wide text-cyan">
-            Account access
+            Welcome back
           </p>
           <h1 className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
-            Sign in to manage your events.
+            Your plans are waiting.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-ink/70">
-            Use your EventFlow account to review bookings, manage tickets, or open
-            the admin workspace.
+            Sign in to review your bookings, keep tickets ready, and pick up where
+            you left off.
           </p>
           <div className="mt-6 grid gap-3 text-sm font-bold text-ink/70 sm:grid-cols-3">
             <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
-              Secure cookies
+              Saved bookings
             </span>
             <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
-              Admin controls
+              Mobile QR tickets
             </span>
             <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
-              QR tickets
+              Easy check-in
             </span>
           </div>
           {cameFromProtectedRoute ? (
@@ -122,6 +123,7 @@ export function LoginPage() {
                 id="email"
                 name="email"
                 onChange={updateField}
+                required
                 type="email"
                 value={form.email}
                 autoComplete="email"
@@ -137,6 +139,7 @@ export function LoginPage() {
                 id="password"
                 name="password"
                 onChange={updateField}
+                required
                 type="password"
                 value={form.password}
                 autoComplete="current-password"
@@ -145,7 +148,7 @@ export function LoginPage() {
           </div>
 
           {error ? (
-            <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember shadow-lift">
+            <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember shadow-lift" role="alert">
               {error}
             </p>
           ) : null}

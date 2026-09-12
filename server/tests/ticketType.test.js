@@ -122,6 +122,27 @@ function ticketTypePayload(eventId, overrides = {}) {
   };
 }
 
+async function createTicketType(eventId, overrides = {}) {
+  const totalQuantity = overrides.totalQuantity ?? 20;
+  const ticketType = await prisma.ticketType.create({
+    data: {
+      eventId,
+      name: `Admission ${randomUUID()}`,
+      description: "Admission ticket",
+      price: "499.00",
+      currency: "INR",
+      totalQuantity,
+      availableQuantity: overrides.availableQuantity ?? totalQuantity,
+      maxPerBooking: 5,
+      isActive: true,
+      ...overrides
+    }
+  });
+
+  createdTicketTypeIds.add(ticketType.id);
+  return ticketType;
+}
+
 ticketTypeDescribe("ticket type management", () => {
   after(async () => {
     if (createdBookingIds.size > 0) {
@@ -233,6 +254,114 @@ ticketTypeDescribe("ticket type management", () => {
       .expect(403);
 
     assert.equal(response.body.status, "error");
+  });
+
+  it("does not deactivate the last usable ticket type for a published event", async () => {
+    const admin = await createUser({
+      role: "ADMIN",
+      email: uniqueEmail("last-ticket-status-admin")
+    });
+    const category = await createCategory();
+    const event = await createEvent({ admin, category, status: "PUBLISHED" });
+    const ticketType = await createTicketType(event.id);
+    const agent = await loginAgent(admin);
+
+    const response = await agent
+      .patch(`/api/admin/ticket-types/${ticketType.id}`)
+      .send({ status: "INACTIVE" })
+      .expect(409);
+
+    assert.match(response.body.message, /active ticket type.*available inventory/i);
+
+    const savedTicketType = await prisma.ticketType.findUnique({
+      where: { id: ticketType.id }
+    });
+    assert.equal(savedTicketType.isActive, true);
+    assert.equal(savedTicketType.availableQuantity, ticketType.availableQuantity);
+  });
+
+  it("does not delete the last usable ticket type for a published event", async () => {
+    const admin = await createUser({
+      role: "ADMIN",
+      email: uniqueEmail("last-ticket-delete-admin")
+    });
+    const category = await createCategory();
+    const event = await createEvent({ admin, category, status: "PUBLISHED" });
+    const ticketType = await createTicketType(event.id);
+    const agent = await loginAgent(admin);
+
+    const response = await agent
+      .delete(`/api/admin/ticket-types/${ticketType.id}`)
+      .expect(409);
+
+    assert.match(response.body.message, /active ticket type.*available inventory/i);
+
+    const savedTicketType = await prisma.ticketType.findUnique({
+      where: { id: ticketType.id }
+    });
+    assert.ok(savedTicketType);
+  });
+
+  it("does not reduce the last usable ticket type to zero available inventory", async () => {
+    const admin = await createUser({
+      role: "ADMIN",
+      email: uniqueEmail("last-ticket-quantity-admin")
+    });
+    const category = await createCategory();
+    const event = await createEvent({ admin, category, status: "PUBLISHED" });
+    const ticketType = await createTicketType(event.id, {
+      totalQuantity: 10,
+      availableQuantity: 1
+    });
+    const agent = await loginAgent(admin);
+
+    const response = await agent
+      .patch(`/api/admin/ticket-types/${ticketType.id}`)
+      .send({ totalQuantity: 9 })
+      .expect(409);
+
+    assert.match(response.body.message, /active ticket type.*available inventory/i);
+
+    const savedTicketType = await prisma.ticketType.findUnique({
+      where: { id: ticketType.id }
+    });
+    assert.equal(savedTicketType.totalQuantity, 10);
+    assert.equal(savedTicketType.availableQuantity, 1);
+  });
+
+  it("serializes concurrent removals so a published event keeps one usable ticket", async () => {
+    const admin = await createUser({
+      role: "ADMIN",
+      email: uniqueEmail("concurrent-ticket-admin")
+    });
+    const category = await createCategory();
+    const event = await createEvent({ admin, category, status: "PUBLISHED" });
+    const firstTicketType = await createTicketType(event.id);
+    const secondTicketType = await createTicketType(event.id);
+    const agent = await loginAgent(admin);
+
+    const [deleteResponse, deactivateResponse] = await Promise.all([
+      agent.delete(`/api/admin/ticket-types/${firstTicketType.id}`),
+      agent
+        .patch(`/api/admin/ticket-types/${secondTicketType.id}`)
+        .send({ status: "INACTIVE" })
+    ]);
+
+    assert.deepEqual(
+      [deleteResponse.status, deactivateResponse.status].sort((left, right) => left - right),
+      [200, 409]
+    );
+
+    const usableTicketTypeCount = await prisma.ticketType.count({
+      where: {
+        eventId: event.id,
+        isActive: true,
+        availableQuantity: {
+          gt: 0
+        }
+      }
+    });
+    assert.equal(usableTicketTypeCount, 1);
   });
 
   it("invalid price is rejected", async () => {
@@ -370,7 +499,16 @@ ticketTypeDescribe("ticket type management", () => {
 
     assert.ok(ticketTypeIds.includes(activeTicketType.id));
     assert.equal(ticketTypeIds.includes(inactiveTicketType.id), false);
-    assert.equal(ticketTypeIds.includes(futureSaleTicketType.id), false);
+    assert.ok(ticketTypeIds.includes(futureSaleTicketType.id));
+    assert.equal(
+      response.body.data.ticketTypes.find((item) => item.id === activeTicketType.id).saleStatus,
+      "AVAILABLE"
+    );
+    assert.equal(
+      response.body.data.ticketTypes.find((item) => item.id === futureSaleTicketType.id)
+        .saleStatus,
+      "UPCOMING"
+    );
   });
 
   it("releases an expired sold-out hold before listing public ticket types", async () => {

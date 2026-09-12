@@ -7,6 +7,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
 import { formatDateTime } from "../utils/formatDate.js";
+import { formatStatusLabel } from "../utils/formatStatusLabel.js";
 
 const statusOptions = ["", "PENDING", "CONFIRMED", "FAILED", "CANCELLED", "REFUNDED"];
 const initialFilters = { status: "", search: "" };
@@ -69,7 +70,7 @@ export function AdminBookingsPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <AdminNav />
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
@@ -82,7 +83,9 @@ export function AdminBookingsPage() {
             </h1>
           </div>
           <p className="surface-card rounded-lg px-4 py-2 text-sm font-bold text-ink/70">
-            {pagination ? `${pagination.total} bookings` : `${bookings.length} bookings`}
+            {`${pagination?.total ?? bookings.length} ${
+              (pagination?.total ?? bookings.length) === 1 ? "booking" : "bookings"
+            }`}
           </p>
         </div>
 
@@ -108,7 +111,7 @@ export function AdminBookingsPage() {
           >
             {statusOptions.map((status) => (
               <option key={status || "ALL"} value={status}>
-                {status || "All statuses"}
+                {status ? formatStatusLabel(status) : "All statuses"}
               </option>
             ))}
           </select>
@@ -146,16 +149,16 @@ export function AdminBookingsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-                <thead className="bg-linen text-xs font-bold uppercase tracking-wide text-ink/55">
+                <thead className="bg-linen text-xs font-bold uppercase tracking-wide text-ink/65">
                   <tr>
-                    <th className="px-4 py-3">Booking</th>
-                    <th className="px-4 py-3">User</th>
-                    <th className="px-4 py-3">Event</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Amount</th>
-                    <th className="px-4 py-3">Payment</th>
-                    <th className="px-4 py-3">Created</th>
-                    <th className="px-4 py-3">Action</th>
+                    <th className="px-4 py-3" scope="col">Booking</th>
+                    <th className="px-4 py-3" scope="col">User</th>
+                    <th className="px-4 py-3" scope="col">Event</th>
+                    <th className="px-4 py-3" scope="col">Status</th>
+                    <th className="px-4 py-3" scope="col">Amount</th>
+                    <th className="px-4 py-3" scope="col">Payment</th>
+                    <th className="px-4 py-3" scope="col">Created</th>
+                    <th className="px-4 py-3" scope="col">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink/10">
@@ -185,6 +188,7 @@ export function AdminBookingsPage() {
                       </td>
                       <td className="px-4 py-4">
                         <Link
+                          aria-label={`View booking ${booking.bookingCode}`}
                           className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
                           to={`/admin/bookings/${booking.id}`}
                         >

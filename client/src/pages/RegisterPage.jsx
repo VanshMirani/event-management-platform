@@ -47,6 +47,7 @@ export function RegisterPage() {
 
   function updateField(event) {
     const { name, value } = event.target;
+    setError("");
     setForm((current) => ({
       ...current,
       [name]: value
@@ -85,27 +86,27 @@ export function RegisterPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:py-16">
+      <section className="site-shell grid gap-8 py-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:py-16">
         <div className="hero-panel rounded-lg p-7">
           <p className="text-sm font-extrabold uppercase tracking-wide text-cyan">
-            Create account
+            Join EventFlow
           </p>
           <h1 className="mt-4 text-4xl font-extrabold tracking-normal sm:text-5xl">
-            Start booking and managing events.
+            Make your next event easy to attend.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-ink/70">
-            Build your event profile, track bookings, and return to upcoming
-            tickets from one place.
+            Create one account to reserve places, follow booking progress, and
+            keep every confirmed ticket close at hand.
           </p>
           <div className="mt-6 grid gap-3 text-sm font-bold text-ink/70 sm:grid-cols-3">
             <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
-              Fast checkout
+              Browse freely
             </span>
             <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
-              Ticket history
+              Simple booking
             </span>
             <span className="rounded-lg border border-cyan/20 bg-white/[0.72] px-3 py-2">
-              QR entry
+              Tickets on hand
             </span>
           </div>
         </div>
@@ -124,6 +125,7 @@ export function RegisterPage() {
                 id="name"
                 name="name"
                 onChange={updateField}
+                required
                 type="text"
                 value={form.name}
                 autoComplete="name"
@@ -139,6 +141,7 @@ export function RegisterPage() {
                 id="email"
                 name="email"
                 onChange={updateField}
+                required
                 type="email"
                 value={form.email}
                 autoComplete="email"
@@ -147,7 +150,7 @@ export function RegisterPage() {
 
             <div>
               <label className="text-sm font-bold text-ink" htmlFor="phone">
-                Phone
+                Phone <span className="font-normal text-ink/60">(optional)</span>
               </label>
               <input
                 className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-cyan focus:ring-2 focus:ring-cyan/20"
@@ -169,6 +172,7 @@ export function RegisterPage() {
                 id="password"
                 name="password"
                 onChange={updateField}
+                required
                 type="password"
                 value={form.password}
                 autoComplete="new-password"
@@ -177,7 +181,7 @@ export function RegisterPage() {
           </div>
 
           {error ? (
-            <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember shadow-lift">
+            <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember shadow-lift" role="alert">
               {error}
             </p>
           ) : null}

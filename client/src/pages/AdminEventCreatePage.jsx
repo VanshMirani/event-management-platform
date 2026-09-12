@@ -18,8 +18,8 @@ export function AdminEventCreatePage() {
     setError("");
 
     try {
-      await createAdminEvent(payload);
-      navigate("/admin/events", { replace: true });
+      const createdEvent = await createAdminEvent(payload);
+      navigate(`/admin/events/${createdEvent.id}/edit`, { replace: true });
     } catch (saveError) {
       setError(saveError.message);
     } finally {
@@ -29,7 +29,7 @@ export function AdminEventCreatePage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-5xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <AdminNav />
         <div className="mt-8">
           <p className="section-kicker">
@@ -38,6 +38,10 @@ export function AdminEventCreatePage() {
           <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
             Create event
           </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/65">
+            Start with the event details. You will add ticket types on the next screen
+            before publishing.
+          </p>
         </div>
         <div className="mt-6">
           <AdminEventForm

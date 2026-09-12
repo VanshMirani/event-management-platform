@@ -92,6 +92,6 @@ export function createRateLimiter({
 }
 
 export const authRateLimiter = createRateLimiter({
-  max: 20,
+  max: process.env.NODE_ENV === "test" ? 1_000 : 20,
   message: "Too many auth attempts, please try again later"
 });

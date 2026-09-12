@@ -1,5 +1,4 @@
 import {
-  confirmDemoBooking,
   confirmFreeBooking,
   createRazorpayOrderForBooking,
   verifyRazorpayPayment
@@ -23,19 +22,6 @@ export async function verifyRazorpayOrderPayment(req, res, next) {
   try {
     const booking = await verifyRazorpayPayment(req.validated.body, req.user.id);
     return sendSuccess(res, { booking }, "Payment verified");
-  } catch (error) {
-    return next(error);
-  }
-}
-
-export async function postDemoBookingConfirmation(req, res, next) {
-  try {
-    const booking = await confirmDemoBooking({
-      bookingId: req.validated.body.bookingId,
-      userId: req.user.id
-    });
-
-    return sendSuccess(res, { booking }, "Demo booking confirmed");
   } catch (error) {
     return next(error);
   }

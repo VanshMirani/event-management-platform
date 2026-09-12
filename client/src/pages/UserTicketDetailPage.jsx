@@ -6,6 +6,7 @@ import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatDateTime } from "../utils/formatDate.js";
+import { getTicketStatusDetails } from "../utils/ticketStatus.js";
 
 export function UserTicketDetailPage() {
   const { id } = useParams();
@@ -14,6 +15,7 @@ export function UserTicketDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState("");
   const [downloadError, setDownloadError] = useState("");
+  const statusDetails = getTicketStatusDetails(ticket?.status);
 
   useDocumentTitle("Ticket | EventFlow");
 
@@ -47,7 +49,7 @@ export function UserTicketDetailPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1_000);
     } catch (downloadFailure) {
       setDownloadError(downloadFailure.message);
     } finally {
@@ -57,7 +59,7 @@ export function UserTicketDetailPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-4xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         {isLoading ? (
           <p className="state-card p-5 text-sm font-semibold text-ink/60">
             Loading ticket...
@@ -86,7 +88,7 @@ export function UserTicketDetailPage() {
                 <EventLocation event={ticket.event} />
               </div>
               <div className="mt-6 rounded-lg border border-cyan/10 bg-cyan/5 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
+                <p className="text-xs font-bold uppercase tracking-wide text-ink/60">
                   Ticket code
                 </p>
                 <p className="mt-1 break-all text-lg font-bold text-ink">
@@ -97,23 +99,47 @@ export function UserTicketDetailPage() {
                 </p>
               </div>
 
+              <div className="mt-5 rounded-lg border border-slate-200 bg-white/75 p-4">
+                <h2 className="font-extrabold text-ink">
+                  {statusDetails.userHeading}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-ink/65">
+                  {statusDetails.userDetail}
+                </p>
+                {ticket.status === "USED" && ticket.checkedInAt ? (
+                  <p className="mt-2 text-sm font-bold text-ink/65">
+                    Checked in {formatDateTime(ticket.checkedInAt)}
+                  </p>
+                ) : null}
+              </div>
+
               {downloadError ? (
                 <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember">
                   {downloadError}
                 </p>
               ) : null}
 
-              <button
-                className="action-primary mt-5 px-5 py-3 text-sm font-bold disabled:cursor-not-allowed"
-                disabled={isDownloading}
-                onClick={handleDownload}
-                type="button"
-              >
-                {isDownloading ? "Preparing..." : "Download ticket"}
-              </button>
+              <div className="mt-5 flex flex-wrap gap-3">
+                {statusDetails.canCheckIn ? (
+                  <button
+                    className="action-primary px-5 py-3 text-sm font-bold disabled:cursor-not-allowed"
+                    disabled={isDownloading}
+                    onClick={handleDownload}
+                    type="button"
+                  >
+                    {isDownloading ? "Preparing..." : "Download ticket"}
+                  </button>
+                ) : null}
+                <Link
+                  className="action-secondary inline-flex px-5 py-3 text-sm font-bold"
+                  to="/user/tickets"
+                >
+                  All tickets
+                </Link>
+              </div>
             </div>
 
-            {ticket.qrCodeUrl ? (
+            {statusDetails.canCheckIn && ticket.qrCodeUrl ? (
               <div className="flex items-center justify-center rounded-lg border border-cyan/15 bg-cyan/5 p-5">
                 <img
                   alt={`QR code for ticket ${ticket.ticketCode}`}

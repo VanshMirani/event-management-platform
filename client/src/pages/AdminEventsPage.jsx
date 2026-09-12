@@ -83,7 +83,7 @@ export function AdminEventsPage() {
 
   return (
     <AppLayout>
-      <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
+      <section className="site-shell py-10 lg:py-14">
         <AdminNav />
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
@@ -128,20 +128,21 @@ export function AdminEventsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[920px] border-collapse text-left text-sm">
-                <thead className="bg-linen text-xs font-bold uppercase tracking-wide text-ink/55">
+                <thead className="bg-linen text-xs font-bold uppercase tracking-wide text-ink/65">
                   <tr>
-                    <th className="px-4 py-3">Title</th>
-                    <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3">City</th>
-                    <th className="px-4 py-3">Start date</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Featured</th>
-                    <th className="px-4 py-3">Actions</th>
+                    <th className="px-4 py-3" scope="col">Title</th>
+                    <th className="px-4 py-3" scope="col">Category</th>
+                    <th className="px-4 py-3" scope="col">City</th>
+                    <th className="px-4 py-3" scope="col">Start date</th>
+                    <th className="px-4 py-3" scope="col">Status</th>
+                    <th className="px-4 py-3" scope="col">Featured</th>
+                    <th className="px-4 py-3" scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink/10">
                   {events.map((event) => {
                     const isBusy = busyEventId === event.id;
+                    const canTogglePublish = ["DRAFT", "PUBLISHED"].includes(event.status);
 
                     return (
                       <tr key={event.id}>
@@ -162,25 +163,34 @@ export function AdminEventsPage() {
                         <td className="px-4 py-4">
                           <div className="flex flex-wrap gap-2">
                             <Link
+                              aria-label={`Edit ${event.title}`}
                               className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint"
                               to={`/admin/events/${event.id}/edit`}
                             >
                               Edit
                             </Link>
+                            {canTogglePublish ? (
+                              <button
+                                aria-label={`${event.status === "PUBLISHED" ? "Unpublish" : "Publish"} ${event.title}`}
+                                className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:text-ink/60"
+                                disabled={isBusy}
+                                onClick={() => handleTogglePublish(event)}
+                                type="button"
+                              >
+                                {isBusy
+                                  ? "Saving..."
+                                  : event.status === "PUBLISHED"
+                                    ? "Unpublish"
+                                    : "Publish"}
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-2 text-xs font-semibold text-ink/60">
+                                Status locked
+                              </span>
+                            )}
                             <button
-                              className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-bold text-ink hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:text-ink/35"
-                              disabled={isBusy}
-                              onClick={() => handleTogglePublish(event)}
-                              type="button"
-                            >
-                              {isBusy
-                                ? "Saving..."
-                                : event.status === "PUBLISHED"
-                                  ? "Unpublish"
-                                  : "Publish"}
-                            </button>
-                            <button
-                              className="danger-button px-3 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/35"
+                              aria-label={`Delete ${event.title}`}
+                              className="danger-button px-3 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:border-ink/10 disabled:text-ink/60"
                               disabled={isBusy}
                               onClick={() => handleDelete(event)}
                               type="button"
