@@ -11,8 +11,9 @@ services:
     runtime: node
     plan: free
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm run prisma:deploy && npm start
-    initialDeployHook: npm run prisma:seed
+    # Free services do not support one-off jobs or shell access. Keep the
+    # idempotent demo seed in startup so fresh databases are always usable.
+    startCommand: npm run prisma:deploy && npm run prisma:seed && npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
