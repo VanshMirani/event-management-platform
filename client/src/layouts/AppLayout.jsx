@@ -84,7 +84,7 @@ export function AppLayout({ children }) {
               </a>
             )}
             {isCheckingAuth ? (
-              <span className="text-ink/45">Checking...</span>
+              <span className="text-ink/65">Checking...</span>
             ) : currentUser ? (
               <>
                 <Link
