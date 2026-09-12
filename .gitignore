@@ -15,3 +15,4 @@ coverage
 *.log
 .vscode
 .vercel
+.env*.local
