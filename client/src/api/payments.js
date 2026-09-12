@@ -9,3 +9,8 @@ export async function verifyRazorpayPayment(data) {
   const response = await apiPost("/payments/razorpay/verify", data);
   return response.data.booking;
 }
+
+export async function confirmDemoPayment(bookingId) {
+  const response = await apiPost("/payments/demo-confirm", { bookingId });
+  return response.data.booking;
+}

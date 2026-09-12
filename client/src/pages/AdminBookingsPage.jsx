@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAdminBookings } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
@@ -9,25 +9,28 @@ import { formatCurrency } from "../utils/formatCurrency.js";
 import { formatDateTime } from "../utils/formatDate.js";
 
 const statusOptions = ["", "PENDING", "CONFIRMED", "FAILED", "CANCELLED", "REFUNDED"];
+const initialFilters = { status: "", search: "" };
+const pageSize = 20;
 
 export function AdminBookingsPage() {
   useDocumentTitle("Admin Bookings | EventFlow");
 
   const [bookings, setBookings] = useState([]);
   const [pagination, setPagination] = useState(null);
-  const [filters, setFilters] = useState({ status: "", search: "" });
+  const [filters, setFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadBookings(nextFilters = filters) {
+  const loadBookings = useCallback(async (nextFilters, page = 1) => {
     setIsLoading(true);
     setError("");
 
     try {
       const data = await listAdminBookings({
         ...nextFilters,
-        page: 1,
-        limit: 20
+        page,
+        limit: pageSize
       });
       setBookings(data.bookings);
       setPagination(data.pagination);
@@ -36,11 +39,11 @@ export function AdminBookingsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadBookings();
-  }, []);
+    loadBookings(initialFilters, 1);
+  }, [loadBookings]);
 
   function updateFilter(event) {
     const { name, value } = event.target;
@@ -52,13 +55,16 @@ export function AdminBookingsPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
-    loadBookings(filters);
+    const nextFilters = { ...filters };
+    setAppliedFilters(nextFilters);
+    loadBookings(nextFilters, 1);
   }
 
   function clearFilters() {
-    const nextFilters = { status: "", search: "" };
+    const nextFilters = initialFilters;
     setFilters(nextFilters);
-    loadBookings(nextFilters);
+    setAppliedFilters(nextFilters);
+    loadBookings(nextFilters, 1);
   }
 
   return (
@@ -86,6 +92,7 @@ export function AdminBookingsPage() {
         >
           <input
             className="rounded-lg border border-ink/15 px-4 py-3 text-sm text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+            aria-label="Search bookings"
             name="search"
             onChange={updateFilter}
             placeholder="Search booking, user, or event"
@@ -94,6 +101,7 @@ export function AdminBookingsPage() {
           />
           <select
             className="rounded-lg border border-ink/15 px-4 py-3 text-sm text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+            aria-label="Filter bookings by status"
             name="status"
             onChange={updateFilter}
             value={filters.status}
@@ -127,7 +135,7 @@ export function AdminBookingsPage() {
               <p className="text-sm font-semibold text-ember">{error}</p>
               <button
                 className="action-primary mt-4 px-4 py-2 text-sm font-bold"
-                onClick={() => loadBookings()}
+                onClick={() => loadBookings(appliedFilters, pagination?.page ?? 1)}
                 type="button"
               >
                 Retry
@@ -190,6 +198,32 @@ export function AdminBookingsPage() {
             </div>
           )}
         </div>
+        {pagination?.totalPages > 1 ? (
+          <nav
+            aria-label="Booking list pages"
+            className="mt-5 flex flex-wrap items-center justify-between gap-3"
+          >
+            <button
+              className="action-secondary px-4 py-2 text-sm font-bold disabled:cursor-not-allowed"
+              disabled={isLoading || pagination.page <= 1}
+              onClick={() => loadBookings(appliedFilters, pagination.page - 1)}
+              type="button"
+            >
+              Previous
+            </button>
+            <p className="text-sm font-bold text-ink/60">
+              Page {pagination.page} of {pagination.totalPages}
+            </p>
+            <button
+              className="action-secondary px-4 py-2 text-sm font-bold disabled:cursor-not-allowed"
+              disabled={isLoading || pagination.page >= pagination.totalPages}
+              onClick={() => loadBookings(appliedFilters, pagination.page + 1)}
+              type="button"
+            >
+              Next
+            </button>
+          </nav>
+        ) : null}
       </section>
     </AppLayout>
   );

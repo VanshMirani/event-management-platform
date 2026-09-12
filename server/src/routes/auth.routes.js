@@ -3,6 +3,7 @@ import {
   getCurrentUser,
   login,
   logout,
+  refreshSession,
   register
 } from "../controllers/auth.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -14,6 +15,7 @@ const router = Router();
 
 router.post("/register", authRateLimiter, validateRequest(registerSchema), register);
 router.post("/login", authRateLimiter, validateRequest(loginSchema), login);
+router.post("/refresh", authRateLimiter, refreshSession);
 router.post("/logout", logout);
 router.get("/me", authMiddleware, getCurrentUser);
 

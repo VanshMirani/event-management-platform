@@ -8,10 +8,10 @@ export default {
       colors: {
         ink: "#0f172a",
         ember: "#ec4899",
-        mint: "#06b6d4",
+        mint: "#0e7490",
         linen: "#f5f7fb",
         aurora: "#7c3aed",
-        cyan: "#06b6d4",
+        cyan: "#0e7490",
         gold: "#f97316",
         night: "#1e1b4b"
       },

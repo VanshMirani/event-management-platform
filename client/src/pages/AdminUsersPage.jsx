@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { listAdminUsers, updateAdminUserStatus } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
@@ -9,6 +9,7 @@ import { AppLayout } from "../layouts/AppLayout.jsx";
 const dateFormatter = new Intl.DateTimeFormat("en-IN", {
   dateStyle: "medium"
 });
+const pageSize = 20;
 
 function formatDate(value) {
   return dateFormatter.format(new Date(value));
@@ -33,12 +34,12 @@ export function AdminUsersPage() {
     return `${pagination.total} users`;
   }, [pagination, users.length]);
 
-  async function loadUsers() {
+  const loadUsers = useCallback(async (page = 1) => {
     setIsLoading(true);
     setError("");
 
     try {
-      const data = await listAdminUsers();
+      const data = await listAdminUsers({ page, limit: pageSize });
       setUsers(data.users);
       setPagination(data.pagination);
     } catch (loadError) {
@@ -46,11 +47,11 @@ export function AdminUsersPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    loadUsers(1);
+  }, [loadUsers]);
 
   async function handleToggleStatus(user) {
     const nextStatus = user.status === "ACTIVE" ? "BLOCKED" : "ACTIVE";
@@ -102,7 +103,7 @@ export function AdminUsersPage() {
               <p className="text-sm font-semibold text-ember">{error}</p>
               <button
                 className="action-primary mt-4 px-4 py-2 text-sm font-bold"
-                onClick={loadUsers}
+                onClick={() => loadUsers(pagination?.page ?? 1)}
                 type="button"
               >
                 Retry
@@ -164,6 +165,32 @@ export function AdminUsersPage() {
             </div>
           )}
         </div>
+        {pagination?.totalPages > 1 ? (
+          <nav
+            aria-label="User list pages"
+            className="mt-5 flex flex-wrap items-center justify-between gap-3"
+          >
+            <button
+              className="action-secondary px-4 py-2 text-sm font-bold disabled:cursor-not-allowed"
+              disabled={isLoading || pagination.page <= 1}
+              onClick={() => loadUsers(pagination.page - 1)}
+              type="button"
+            >
+              Previous
+            </button>
+            <p className="text-sm font-bold text-ink/60">
+              Page {pagination.page} of {pagination.totalPages}
+            </p>
+            <button
+              className="action-secondary px-4 py-2 text-sm font-bold disabled:cursor-not-allowed"
+              disabled={isLoading || pagination.page >= pagination.totalPages}
+              onClick={() => loadUsers(pagination.page + 1)}
+              type="button"
+            >
+              Next
+            </button>
+          </nav>
+        ) : null}
       </section>
     </AppLayout>
   );

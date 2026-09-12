@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getBooking } from "../api/bookings.js";
 import {
+  confirmDemoPayment,
   createRazorpayOrder,
   verifyRazorpayPayment
 } from "../api/payments.js";
+import { EventLocation } from "../components/EventLocation.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useAuth } from "../features/auth/index.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
@@ -12,6 +14,10 @@ import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
 import { formatDateTime } from "../utils/formatDate.js";
 import { loadRazorpayCheckoutScript } from "../utils/razorpay.js";
+
+const isDemoCheckoutEnabled = ["1", "true", "yes"].includes(
+  String(import.meta.env.VITE_ENABLE_DEMO_CHECKOUT ?? "").toLowerCase()
+);
 
 export function CheckoutPage() {
   const { bookingId } = useParams();
@@ -25,7 +31,7 @@ export function CheckoutPage() {
 
   useDocumentTitle("Checkout | EventFlow");
 
-  async function loadBooking() {
+  const loadBooking = useCallback(async () => {
     setIsLoading(true);
     setError("");
     setPaymentError("");
@@ -37,14 +43,61 @@ export function CheckoutPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [bookingId]);
 
   useEffect(() => {
     loadBooking();
-  }, [bookingId]);
+  }, [loadBooking]);
 
   const bookingItem = booking?.items?.[0] ?? null;
   const canPay = booking?.status === "PENDING";
+
+  function showPaymentSuccess(confirmedBooking, isDemo = false) {
+    const confirmedBookingId = confirmedBooking?.id ?? booking.id;
+    const query = new URLSearchParams({ bookingId: confirmedBookingId });
+
+    if (isDemo) {
+      query.set("demo", "1");
+    }
+
+    navigate(`/payment-success?${query.toString()}`, {
+      replace: true,
+      state: {
+        bookingId: confirmedBookingId,
+        isDemo
+      }
+    });
+  }
+
+  function showPaymentFailure(message) {
+    const query = new URLSearchParams({ bookingId: booking.id });
+
+    navigate(`/payment-failed?${query.toString()}`, {
+      state: {
+        bookingId: booking.id,
+        message
+      }
+    });
+  }
+
+  async function handleDemoPayment() {
+    if (!booking) {
+      return;
+    }
+
+    setIsPaying(true);
+    setPaymentError("");
+
+    try {
+      const confirmedBooking = await confirmDemoPayment(booking.id);
+      setBooking(confirmedBooking);
+      showPaymentSuccess(confirmedBooking, true);
+    } catch (demoError) {
+      setPaymentError(demoError.message);
+    } finally {
+      setIsPaying(false);
+    }
+  }
 
   async function handlePayment() {
     if (!booking) {
@@ -94,20 +147,10 @@ export function CheckoutPage() {
               razorpay_signature: response.razorpay_signature
             });
             setBooking(confirmedBooking);
-            navigate("/payment-success", {
-              replace: true,
-              state: {
-                bookingId: confirmedBooking.id
-              }
-            });
+            showPaymentSuccess(confirmedBooking);
           } catch (verifyError) {
             setPaymentError(verifyError.message);
-            navigate("/payment-failed", {
-              state: {
-                bookingId: booking.id,
-                message: verifyError.message
-              }
-            });
+            showPaymentFailure(verifyError.message);
           } finally {
             setIsPaying(false);
           }
@@ -125,12 +168,7 @@ export function CheckoutPage() {
           response?.error?.description ?? "Payment failed. Please try again.";
         setPaymentError(message);
         setIsPaying(false);
-        navigate("/payment-failed", {
-          state: {
-            bookingId: booking.id,
-            message
-          }
-        });
+        showPaymentFailure(message);
       });
 
       checkout.open();
@@ -177,11 +215,9 @@ export function CheckoutPage() {
               <p className="mt-3 text-sm text-ink/65">
                 {formatDateTime(booking.event?.startsAt)}
               </p>
-              <p className="mt-1 text-sm text-ink/65">
-                {[booking.event?.venueName, booking.event?.city, booking.event?.country]
-                  .filter(Boolean)
-                  .join(", ") || "Location to be announced"}
-              </p>
+              <div className="mt-1 text-sm">
+                <EventLocation event={booking.event} fallback="Location to be announced" />
+              </div>
 
               <div className="mt-6 rounded-lg border border-cyan/10 bg-cyan/5 p-4">
                 <p className="text-sm font-extrabold uppercase tracking-wide text-mint">
@@ -234,21 +270,41 @@ export function CheckoutPage() {
               <p className="mt-5 text-xs font-semibold text-ink/50">
                 Expires at {formatDateTime(booking.expiresAt)}
               </p>
+              {isDemoCheckoutEnabled ? (
+                <div
+                  className="mt-4 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-3 text-sm text-ink"
+                  role="note"
+                >
+                  <p className="font-extrabold text-cyan">Demo checkout</p>
+                  <p className="mt-1 font-semibold text-ink/70">
+                    This confirms the booking for testing only. No real payment or charge is made.
+                  </p>
+                </div>
+              ) : null}
               {paymentError ? (
-                <p className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember">
+                <p
+                  className="mt-4 rounded-lg border border-ember/20 bg-ember/10 px-4 py-3 text-sm font-semibold text-ember"
+                  role="alert"
+                >
                   {paymentError}
                 </p>
               ) : null}
               <button
                 className="action-primary mt-5 w-full px-5 py-3 text-sm font-extrabold disabled:cursor-not-allowed"
                 disabled={!canPay || isPaying}
-                onClick={handlePayment}
+                onClick={isDemoCheckoutEnabled ? handleDemoPayment : handlePayment}
                 type="button"
               >
-                {isPaying ? "Processing..." : "Pay Now"}
+                {isPaying
+                  ? "Processing..."
+                  : isDemoCheckoutEnabled
+                    ? "Confirm demo booking"
+                    : "Pay Now"}
               </button>
               <p className="mt-3 text-xs font-semibold text-ink/50">
-                Payments are verified by the backend before your booking is confirmed.
+                {isDemoCheckoutEnabled
+                  ? "Demo confirmation is available only when explicitly enabled for this environment."
+                  : "Payments are verified by the backend before your booking is confirmed."}
               </p>
               <Link
                 className="mt-5 inline-flex text-sm font-bold text-mint hover:text-ember"

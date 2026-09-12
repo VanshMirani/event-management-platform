@@ -28,15 +28,18 @@ function signToken(user, tokenType, secretName, expiresIn) {
     requireSecret(secretName, env[secretName]),
     {
       subject: user.id,
+      algorithm: "HS256",
       expiresIn
     }
   );
 }
 
 function verifyToken(token, tokenType, secretName) {
-  const payload = jwt.verify(token, requireSecret(secretName, env[secretName]));
+  const payload = jwt.verify(token, requireSecret(secretName, env[secretName]), {
+    algorithms: ["HS256"]
+  });
 
-  if (payload.tokenType !== tokenType || !payload.sub) {
+  if (payload.tokenType !== tokenType || typeof payload.sub !== "string" || !payload.sub) {
     throw new Error("Invalid token payload.");
   }
 
@@ -52,7 +55,7 @@ function getCookieOptions(maxAge) {
   const options = {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    sameSite: "lax",
     path: "/",
     maxAge
   };
@@ -72,9 +75,13 @@ function getClearCookieOptions() {
 
 export function createAuthTokens(user) {
   return {
-    accessToken: signToken(user, "access", "JWT_ACCESS_SECRET", ACCESS_TOKEN_EXPIRES_IN),
+    accessToken: createAccessToken(user),
     refreshToken: signToken(user, "refresh", "JWT_REFRESH_SECRET", REFRESH_TOKEN_EXPIRES_IN)
   };
+}
+
+export function createAccessToken(user) {
+  return signToken(user, "access", "JWT_ACCESS_SECRET", ACCESS_TOKEN_EXPIRES_IN);
 }
 
 export function verifyAccessToken(token) {
@@ -86,8 +93,12 @@ export function verifyRefreshToken(token) {
 }
 
 export function setAuthCookies(res, tokens) {
-  res.cookie(ACCESS_TOKEN_COOKIE, tokens.accessToken, getCookieOptions(ACCESS_TOKEN_MAX_AGE_MS));
+  setAccessTokenCookie(res, tokens.accessToken);
   res.cookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, getCookieOptions(REFRESH_TOKEN_MAX_AGE_MS));
+}
+
+export function setAccessTokenCookie(res, accessToken) {
+  res.cookie(ACCESS_TOKEN_COOKIE, accessToken, getCookieOptions(ACCESS_TOKEN_MAX_AGE_MS));
 }
 
 export function clearAuthCookies(res) {

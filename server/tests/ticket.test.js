@@ -19,6 +19,7 @@ process.env.COOKIE_DOMAIN = "";
 process.env.RAZORPAY_KEY_ID = "rzp_test_key_id";
 process.env.RAZORPAY_KEY_SECRET = "test_razorpay_secret";
 process.env.RAZORPAY_WEBHOOK_SECRET = "test_razorpay_webhook_secret";
+process.env.DEMO_MODE = "false";
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 let app;
@@ -452,6 +453,88 @@ ticketDescribe("QR tickets", () => {
     assert.ok(usedResponse.body.data.ticket.checkedInAt);
   });
 
+  it("rejects check-in while the event is not published", async () => {
+    const { admin, user, event, booking } = await createFixture({ quantity: 1 });
+    const userAgent = await loginAgent(user);
+    const adminAgent = await loginAgent(admin);
+
+    await confirmBookingWithPayment(userAgent, booking.id);
+
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        bookingId: booking.id
+      }
+    });
+
+    await adminAgent.patch(`/api/admin/events/${event.id}/unpublish`).expect(200);
+
+    const verifyResponse = await adminAgent
+      .post("/api/admin/check-in/verify")
+      .send({ ticketCode: ticket.ticketNumber })
+      .expect(400);
+    const markUsedResponse = await adminAgent
+      .post("/api/admin/check-in/mark-used")
+      .send({ ticketCode: ticket.ticketNumber })
+      .expect(400);
+    const savedTicket = await prisma.ticket.findUnique({
+      where: { id: ticket.id }
+    });
+
+    assert.match(verifyResponse.body.message, /published event/i);
+    assert.match(markUsedResponse.body.message, /published event/i);
+    assert.equal(savedTicket.status, "VALID");
+  });
+
+  it("cancels valid tickets with a cancelled event without claiming a refund", async () => {
+    const { admin, user, event, booking } = await createFixture({ quantity: 2 });
+    const userAgent = await loginAgent(user);
+    const adminAgent = await loginAgent(admin);
+
+    await confirmBookingWithPayment(userAgent, booking.id);
+
+    const tickets = await prisma.ticket.findMany({
+      where: {
+        bookingId: booking.id
+      },
+      orderBy: {
+        createdAt: "asc"
+      }
+    });
+
+    await adminAgent
+      .post("/api/admin/check-in/mark-used")
+      .send({ ticketCode: tickets[0].ticketNumber })
+      .expect(200);
+
+    await adminAgent
+      .patch(`/api/admin/events/${event.id}`)
+      .send({ status: "CANCELLED" })
+      .expect(200);
+
+    const savedTickets = await prisma.ticket.findMany({
+      where: { bookingId: booking.id },
+      orderBy: {
+        createdAt: "asc"
+      }
+    });
+    const savedBooking = await prisma.booking.findUnique({
+      where: { id: booking.id },
+      include: {
+        payment: true
+      }
+    });
+
+    assert.equal(savedTickets[0].status, "USED");
+    assert.ok(savedTickets[0].usedAt);
+    assert.equal(savedTickets[0].cancelledAt, null);
+    assert.equal(savedTickets[1].status, "CANCELLED");
+    assert.equal(savedTickets[1].usedAt, null);
+    assert.ok(savedTickets[1].cancelledAt);
+    assert.equal(savedBooking.status, "CONFIRMED");
+    assert.equal(savedBooking.payment.status, "SUCCESS");
+    assert.equal(savedBooking.payment.refundedAt, null);
+  });
+
   it("duplicate check-in is rejected", async () => {
     const { admin, user, booking } = await createFixture({ quantity: 1 });
     const userAgent = await loginAgent(user);
@@ -475,6 +558,31 @@ ticketDescribe("QR tickets", () => {
       .expect(409);
 
     assert.equal(response.body.status, "error");
+  });
+
+  it("allows only one of two concurrent check-in attempts", async () => {
+    const { admin, user, booking } = await createFixture({ quantity: 1 });
+    const userAgent = await loginAgent(user);
+    const adminAgent = await loginAgent(admin);
+
+    await confirmBookingWithPayment(userAgent, booking.id);
+
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        bookingId: booking.id
+      }
+    });
+    const attempts = await Promise.all([
+      adminAgent
+        .post("/api/admin/check-in/mark-used")
+        .send({ ticketCode: ticket.ticketNumber }),
+      adminAgent
+        .post("/api/admin/check-in/mark-used")
+        .send({ ticketCode: ticket.ticketNumber })
+    ]);
+    const statuses = attempts.map((response) => response.status).sort();
+
+    assert.deepEqual(statuses, [200, 409]);
   });
 
   it("invalid qrToken returns 404", async () => {

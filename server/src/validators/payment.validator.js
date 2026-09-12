@@ -8,6 +8,14 @@ export const createRazorpayOrderSchema = z.object({
     .strict()
 });
 
+export const confirmDemoBookingSchema = z.object({
+  body: z
+    .object({
+      bookingId: z.string().min(1)
+    })
+    .strict()
+});
+
 export const verifyPaymentSchema = z.object({
   body: z
     .object({

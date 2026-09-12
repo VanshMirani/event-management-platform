@@ -20,6 +20,8 @@ const EVENT_SELECT = {
   id: true,
   title: true,
   slug: true,
+  status: true,
+  type: true,
   startsAt: true,
   endsAt: true,
   venueName: true,
@@ -121,6 +123,12 @@ function createQrToken() {
 
 function hashQrToken(qrToken) {
   return crypto.createHash("sha256").update(qrToken).digest("hex");
+}
+
+function ensureEventAcceptsCheckIn(ticket) {
+  if (ticket.event?.status !== "PUBLISHED") {
+    throw createHttpError(400, "Tickets can only be checked in for published events");
+  }
 }
 
 function toMoney(value) {
@@ -290,6 +298,8 @@ export async function findTicketForCheckIn({ ticketCode, qrToken }) {
     throw createHttpError(404, "Ticket not found");
   }
 
+  ensureEventAcceptsCheckIn(ticket);
+
   return toTicketResponse(ticket);
 }
 
@@ -304,7 +314,12 @@ export async function markTicketUsedForCheckIn({ ticketCode, qrToken }) {
         },
     select: {
       id: true,
-      status: true
+      status: true,
+      event: {
+        select: {
+          status: true
+        }
+      }
     }
   });
 
@@ -312,21 +327,58 @@ export async function markTicketUsedForCheckIn({ ticketCode, qrToken }) {
     throw createHttpError(404, "Ticket not found");
   }
 
-  if (ticket.status === "USED") {
-    throw createHttpError(409, "Ticket is already used");
-  }
+  ensureEventAcceptsCheckIn(ticket);
 
-  if (ticket.status === "CANCELLED" || ticket.status === "REFUNDED") {
-    throw createHttpError(400, `Ticket cannot be checked in with status ${ticket.status}`);
-  }
-
-  const updatedTicket = await prisma.ticket.update({
+  const markedUsed = await prisma.ticket.updateMany({
     where: {
-      id: ticket.id
+      id: ticket.id,
+      status: "VALID",
+      event: {
+        is: {
+          status: "PUBLISHED"
+        }
+      }
     },
     data: {
       status: "USED",
       usedAt: new Date()
+    }
+  });
+
+  if (markedUsed.count !== 1) {
+    const currentTicket = await prisma.ticket.findUnique({
+      where: {
+        id: ticket.id
+      },
+      select: {
+        status: true,
+        event: {
+          select: {
+            status: true
+          }
+        }
+      }
+    });
+
+    if (!currentTicket) {
+      throw createHttpError(404, "Ticket not found");
+    }
+
+    ensureEventAcceptsCheckIn(currentTicket);
+
+    if (currentTicket.status === "USED") {
+      throw createHttpError(409, "Ticket is already used");
+    }
+
+    throw createHttpError(
+      400,
+      `Ticket cannot be checked in with status ${currentTicket.status}`
+    );
+  }
+
+  const updatedTicket = await prisma.ticket.findUnique({
+    where: {
+      id: ticket.id
     },
     select: TICKET_SELECT
   });
@@ -348,13 +400,23 @@ export async function createTicketPdf(ticket) {
     document.fontSize(16).text(ticket.event?.title ?? "Event");
     document.moveDown(0.5);
     document.fontSize(11).text(`Date: ${new Date(ticket.event?.startsAt).toLocaleString("en-IN")}`);
-    document.text(
-      `Location: ${
-        [ticket.event?.venueName, ticket.event?.city, ticket.event?.country]
-          .filter(Boolean)
-          .join(", ") || ticket.event?.onlineUrl || "To be announced"
-      }`
-    );
+    const physicalLocation = [
+      ticket.event?.venueName,
+      ticket.event?.address,
+      ticket.event?.city,
+      ticket.event?.state,
+      ticket.event?.country
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const eventLocation =
+      ticket.event?.type === "ONLINE"
+        ? ticket.event?.onlineUrl || "Online event"
+        : [physicalLocation, ticket.event?.type === "HYBRID" ? ticket.event?.onlineUrl : null]
+            .filter(Boolean)
+            .join(" / ") || "To be announced";
+
+    document.text(`Location: ${eventLocation}`);
     document.moveDown();
     document.text(`Attendee: ${ticket.user?.name ?? "Guest"}`);
     document.text(`Email: ${ticket.user?.email ?? "-"}`);

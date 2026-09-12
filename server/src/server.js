@@ -2,11 +2,17 @@ import app from "./app.js";
 import { env } from "./config/env.js";
 import { prisma } from "./config/db.js";
 
-const server = app.listen(env.PORT, () => {
-  console.log(`API server listening on http://localhost:${env.PORT}`);
+const server = app.listen(env.PORT, "0.0.0.0", () => {
+  console.log(`EventFlow listening on port ${env.PORT}`);
 });
+let isShuttingDown = false;
 
 async function shutdown(signal) {
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
   console.log(`${signal} received. Closing server.`);
 
   server.close(async () => {

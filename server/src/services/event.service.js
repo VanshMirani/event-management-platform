@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/db.js";
 import { createHttpError } from "../utils/httpError.js";
 import { createSlug } from "../utils/slug.js";
@@ -41,6 +42,24 @@ const EVENT_SELECT = {
   }
 };
 
+const SERIALIZABLE_TRANSACTION_ATTEMPTS = 3;
+
+async function runSerializableTransaction(callback) {
+  for (let attempt = 1; attempt <= SERIALIZABLE_TRANSACTION_ATTEMPTS; attempt += 1) {
+    try {
+      return await prisma.$transaction(callback, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      });
+    } catch (error) {
+      if (error?.code !== "P2034" || attempt === SERIALIZABLE_TRANSACTION_ATTEMPTS) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("Unable to complete event transaction");
+}
+
 function normalizeOptionalText(value) {
   const normalized = value?.trim();
   return normalized || null;
@@ -65,6 +84,7 @@ function toEventResponse(event) {
     onlineUrl: event.onlineUrl,
     startAt: event.startsAt,
     endAt: event.endsAt,
+    capacity: event.capacity,
     status: event.status,
     isFeatured: event.isFeatured,
     bannerImage: event.imageUrl,
@@ -73,12 +93,31 @@ function toEventResponse(event) {
   };
 }
 
+function toPublicEventResponse(event) {
+  const response = toEventResponse(event);
+
+  return {
+    ...response,
+    onlineUrl: null,
+    organizer: event.organizer
+      ? {
+          id: event.organizer.id,
+          name: event.organizer.name
+        }
+      : null
+  };
+}
+
 function mapEventList(events) {
   return events.map(toEventResponse);
 }
 
-async function ensureCategoryExists(categoryId) {
-  const category = await prisma.category.findUnique({
+function mapPublicEventList(events) {
+  return events.map(toPublicEventResponse);
+}
+
+async function ensureCategoryExists(categoryId, db = prisma) {
+  const category = await db.category.findUnique({
     where: { id: categoryId },
     select: { id: true }
   });
@@ -88,13 +127,13 @@ async function ensureCategoryExists(categoryId) {
   }
 }
 
-async function createUniqueEventSlug(title, currentEventId = null) {
+async function createUniqueEventSlug(title, currentEventId = null, db = prisma) {
   const baseSlug = createSlug(title);
   let slug = baseSlug;
   let suffix = 2;
 
   while (
-    await prisma.event.findFirst({
+    await db.event.findFirst({
       where: {
         slug,
         ...(currentEventId
@@ -166,6 +205,10 @@ function mapEventData(input) {
     data.endsAt = new Date(input.endAt);
   }
 
+  if (input.capacity !== undefined) {
+    data.capacity = input.capacity;
+  }
+
   if (input.status !== undefined) {
     data.status = input.status;
   }
@@ -185,13 +228,15 @@ function isUniqueSlugError(error) {
   return error?.code === "P2002" && error?.meta?.target?.includes("slug");
 }
 
-async function getExistingEvent(eventId) {
-  const event = await prisma.event.findUnique({
+async function getExistingEvent(eventId, db = prisma) {
+  const event = await db.event.findUnique({
     where: { id: eventId },
     select: {
       id: true,
       startsAt: true,
-      endsAt: true
+      endsAt: true,
+      capacity: true,
+      status: true
     }
   });
 
@@ -205,6 +250,58 @@ async function getExistingEvent(eventId) {
 function ensureDateOrder(startsAt, endsAt) {
   if (endsAt <= startsAt) {
     throw createHttpError(400, "endAt must be after startAt");
+  }
+}
+
+function ensurePublishedEventIsUpcoming(status, startsAt) {
+  if (status === "PUBLISHED" && startsAt <= new Date()) {
+    throw createHttpError(400, "Published events must start in the future");
+  }
+}
+
+async function ensureCapacitySupportsTicketTypes(eventId, capacity, db = prisma) {
+  if (capacity === null || capacity === undefined) {
+    return;
+  }
+
+  const ticketTotals = await db.ticketType.aggregate({
+    where: {
+      eventId
+    },
+    _sum: {
+      totalQuantity: true
+    }
+  });
+
+  if ((ticketTotals._sum.totalQuantity ?? 0) > capacity) {
+    throw createHttpError(400, "capacity cannot be lower than configured ticket inventory");
+  }
+}
+
+async function ensureEventDateSupportsTicketSales(eventId, startsAt, db = prisma) {
+  const invalidTicketType = await db.ticketType.findFirst({
+    where: {
+      eventId,
+      OR: [
+        {
+          salesStartAt: {
+            gte: startsAt
+          }
+        },
+        {
+          salesEndAt: {
+            gt: startsAt
+          }
+        }
+      ]
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (invalidTicketType) {
+    throw createHttpError(400, "Event startAt conflicts with a ticket sale window");
   }
 }
 
@@ -222,6 +319,7 @@ export async function createAdminEvent(input, organizerId) {
   const startsAt = new Date(input.startAt);
   const endsAt = new Date(input.endAt);
   ensureDateOrder(startsAt, endsAt);
+  ensurePublishedEventIsUpcoming(input.status, startsAt);
 
   const slug = await createUniqueEventSlug(input.title);
 
@@ -269,30 +367,58 @@ export async function getAdminEvent(eventId) {
 }
 
 export async function updateAdminEvent(eventId, input) {
-  const existingEvent = await getExistingEvent(eventId);
-
-  if (input.categoryId !== undefined) {
-    await ensureCategoryExists(input.categoryId);
-  }
-
-  const updateData = mapEventData(input);
-
-  if (input.title !== undefined) {
-    updateData.slug = await createUniqueEventSlug(input.title, eventId);
-  }
-
-  const startsAt = updateData.startsAt ?? existingEvent.startsAt;
-  const endsAt = updateData.endsAt ?? existingEvent.endsAt;
-  ensureDateOrder(startsAt, endsAt);
-
   try {
-    const event = await prisma.event.update({
-      where: { id: eventId },
-      data: updateData,
-      select: EVENT_SELECT
-    });
+    return await runSerializableTransaction(async (tx) => {
+      const existingEvent = await getExistingEvent(eventId, tx);
 
-    return toEventResponse(event);
+      if (input.categoryId !== undefined) {
+        await ensureCategoryExists(input.categoryId, tx);
+      }
+
+      const updateData = mapEventData(input);
+
+      if (input.title !== undefined) {
+        updateData.slug = await createUniqueEventSlug(input.title, eventId, tx);
+      }
+
+      const startsAt = updateData.startsAt ?? existingEvent.startsAt;
+      const endsAt = updateData.endsAt ?? existingEvent.endsAt;
+      ensureDateOrder(startsAt, endsAt);
+      const status = updateData.status ?? existingEvent.status;
+
+      if (input.status === "PUBLISHED" || input.startAt !== undefined) {
+        ensurePublishedEventIsUpcoming(status, startsAt);
+      }
+
+      if (input.capacity !== undefined) {
+        await ensureCapacitySupportsTicketTypes(eventId, input.capacity, tx);
+      }
+
+      if (input.startAt !== undefined) {
+        await ensureEventDateSupportsTicketSales(eventId, startsAt, tx);
+      }
+
+      const event = await tx.event.update({
+        where: { id: eventId },
+        data: updateData,
+        select: EVENT_SELECT
+      });
+
+      if (event.status === "CANCELLED") {
+        await tx.ticket.updateMany({
+          where: {
+            eventId,
+            status: "VALID"
+          },
+          data: {
+            status: "CANCELLED",
+            cancelledAt: new Date()
+          }
+        });
+      }
+
+      return toEventResponse(event);
+    });
   } catch (error) {
     handleEventWriteError(error);
   }
@@ -315,14 +441,18 @@ export async function deleteAdminEvent(eventId) {
 }
 
 export async function publishAdminEvent(eventId) {
-  await getExistingEvent(eventId);
-  const event = await prisma.event.update({
-    where: { id: eventId },
-    data: { status: "PUBLISHED" },
-    select: EVENT_SELECT
-  });
+  return runSerializableTransaction(async (tx) => {
+    const existingEvent = await getExistingEvent(eventId, tx);
+    ensurePublishedEventIsUpcoming("PUBLISHED", existingEvent.startsAt);
 
-  return toEventResponse(event);
+    const event = await tx.event.update({
+      where: { id: eventId },
+      data: { status: "PUBLISHED" },
+      select: EVENT_SELECT
+    });
+
+    return toEventResponse(event);
+  });
 }
 
 export async function unpublishAdminEvent(eventId) {
@@ -337,9 +467,13 @@ export async function unpublishAdminEvent(eventId) {
 }
 
 export async function listPublishedEvents() {
+  const now = new Date();
   const events = await prisma.event.findMany({
     where: {
-      status: "PUBLISHED"
+      status: "PUBLISHED",
+      startsAt: {
+        gt: now
+      }
     },
     orderBy: {
       startsAt: "asc"
@@ -347,14 +481,18 @@ export async function listPublishedEvents() {
     select: EVENT_SELECT
   });
 
-  return mapEventList(events);
+  return mapPublicEventList(events);
 }
 
 export async function listFeaturedPublishedEvents() {
+  const now = new Date();
   const events = await prisma.event.findMany({
     where: {
       status: "PUBLISHED",
-      isFeatured: true
+      isFeatured: true,
+      startsAt: {
+        gt: now
+      }
     },
     orderBy: {
       startsAt: "asc"
@@ -363,14 +501,17 @@ export async function listFeaturedPublishedEvents() {
     select: EVENT_SELECT
   });
 
-  return mapEventList(events);
+  return mapPublicEventList(events);
 }
 
 export async function getPublishedEventBySlug(slug) {
   const event = await prisma.event.findFirst({
     where: {
       slug,
-      status: "PUBLISHED"
+      status: "PUBLISHED",
+      startsAt: {
+        gt: new Date()
+      }
     },
     select: EVENT_SELECT
   });
@@ -379,5 +520,5 @@ export async function getPublishedEventBySlug(slug) {
     throw createHttpError(404, "Event not found");
   }
 
-  return toEventResponse(event);
+  return toPublicEventResponse(event);
 }

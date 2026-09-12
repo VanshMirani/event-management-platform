@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createAdminTicketType,
   deleteAdminTicketType,
@@ -69,7 +69,7 @@ function validateForm(form) {
 
 function optionalValue(value) {
   const normalized = value.trim();
-  return normalized || undefined;
+  return normalized || null;
 }
 
 function toPayload(form, eventId = null) {
@@ -80,8 +80,8 @@ function toPayload(form, eventId = null) {
     currency: form.currency,
     totalQuantity: Number(form.totalQuantity),
     maxPerUser: Number(form.maxPerUser),
-    saleStartAt: form.saleStartAt ? fromDateTimeLocalValue(form.saleStartAt) : undefined,
-    saleEndAt: form.saleEndAt ? fromDateTimeLocalValue(form.saleEndAt) : undefined,
+    saleStartAt: form.saleStartAt ? fromDateTimeLocalValue(form.saleStartAt) : null,
+    saleEndAt: form.saleEndAt ? fromDateTimeLocalValue(form.saleEndAt) : null,
     status: form.status
   };
 
@@ -102,7 +102,7 @@ export function AdminTicketTypesSection({ eventId }) {
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
 
-  async function loadTicketTypes() {
+  const loadTicketTypes = useCallback(async () => {
     setIsLoading(true);
     setError("");
 
@@ -113,11 +113,11 @@ export function AdminTicketTypesSection({ eventId }) {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [eventId]);
 
   useEffect(() => {
     loadTicketTypes();
-  }, [eventId]);
+  }, [loadTicketTypes]);
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -263,14 +263,14 @@ export function AdminTicketTypesSection({ eventId }) {
               Currency
             </label>
             <input
-              className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 uppercase text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+              className="mt-2 w-full rounded-lg border border-ink/15 bg-linen px-4 py-3 uppercase text-ink"
               id="ticket-currency"
-              maxLength={3}
               name="currency"
-              onChange={updateField}
+              readOnly
               type="text"
               value={form.currency}
             />
+            <p className="mt-1 text-xs font-semibold text-ink/50">INR only in this demo.</p>
           </div>
 
           <div>

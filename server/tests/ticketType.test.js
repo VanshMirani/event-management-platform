@@ -31,6 +31,7 @@ const createdEmails = new Set();
 const createdCategoryIds = new Set();
 const createdEventIds = new Set();
 const createdTicketTypeIds = new Set();
+const createdBookingIds = new Set();
 const password = "StrongPass123";
 
 function uniqueEmail(prefix) {
@@ -82,7 +83,7 @@ async function createCategory() {
   return category;
 }
 
-async function createEvent({ admin, category, status = "PUBLISHED" }) {
+async function createEvent({ admin, category, status = "PUBLISHED", overrides = {} }) {
   const startsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   const endsAt = new Date(startsAt.getTime() + 2 * 60 * 60 * 1000);
   const event = await prisma.event.create({
@@ -99,7 +100,8 @@ async function createEvent({ admin, category, status = "PUBLISHED" }) {
       state: "Maharashtra",
       country: "India",
       categoryId: category.id,
-      organizerId: admin.id
+      organizerId: admin.id,
+      ...overrides
     }
   });
   createdEventIds.add(event.id);
@@ -122,6 +124,30 @@ function ticketTypePayload(eventId, overrides = {}) {
 
 ticketTypeDescribe("ticket type management", () => {
   after(async () => {
+    if (createdBookingIds.size > 0) {
+      await prisma.payment.deleteMany({
+        where: {
+          bookingId: {
+            in: [...createdBookingIds]
+          }
+        }
+      });
+      await prisma.bookingItem.deleteMany({
+        where: {
+          bookingId: {
+            in: [...createdBookingIds]
+          }
+        }
+      });
+      await prisma.booking.deleteMany({
+        where: {
+          id: {
+            in: [...createdBookingIds]
+          }
+        }
+      });
+    }
+
     if (createdTicketTypeIds.size > 0) {
       await prisma.ticketType.deleteMany({
         where: {
@@ -183,6 +209,15 @@ ticketTypeDescribe("ticket type management", () => {
     assert.equal(response.body.data.ticketType.availableQuantity, 100);
     assert.equal(response.body.data.ticketType.maxPerUser, 5);
     assert.equal(response.body.data.ticketType.status, "ACTIVE");
+
+    const clearedResponse = await agent
+      .patch(`/api/admin/ticket-types/${response.body.data.ticketType.id}`)
+      .send({ description: null, saleStartAt: null, saleEndAt: null })
+      .expect(200);
+
+    assert.equal(clearedResponse.body.data.ticketType.description, null);
+    assert.equal(clearedResponse.body.data.ticketType.saleStartAt, null);
+    assert.equal(clearedResponse.body.data.ticketType.saleEndAt, null);
   });
 
   it("normal user cannot create ticket type", async () => {
@@ -214,6 +249,20 @@ ticketTypeDescribe("ticket type management", () => {
     assert.equal(response.body.status, "error");
   });
 
+  it("rejects non-INR ticket currencies", async () => {
+    const admin = await createUser({ role: "ADMIN", email: uniqueEmail("currency-admin") });
+    const category = await createCategory();
+    const event = await createEvent({ admin, category });
+    const agent = await loginAgent(admin);
+
+    const response = await agent
+      .post("/api/admin/ticket-types")
+      .send(ticketTypePayload(event.id, { currency: "USD" }))
+      .expect(400);
+
+    assert.equal(response.body.status, "error");
+  });
+
   it("invalid quantity is rejected", async () => {
     const admin = await createUser({ role: "ADMIN", email: uniqueEmail("quantity-admin") });
     const category = await createCategory();
@@ -226,6 +275,44 @@ ticketTypeDescribe("ticket type management", () => {
       .expect(400);
 
     assert.equal(response.body.status, "error");
+  });
+
+  it("rejects ticket inventory above event capacity", async () => {
+    const admin = await createUser({ role: "ADMIN", email: uniqueEmail("capacity-admin") });
+    const category = await createCategory();
+    const event = await createEvent({
+      admin,
+      category,
+      overrides: {
+        capacity: 25
+      }
+    });
+    const agent = await loginAgent(admin);
+
+    const response = await agent
+      .post("/api/admin/ticket-types")
+      .send(ticketTypePayload(event.id, { totalQuantity: 26 }))
+      .expect(400);
+
+    assert.match(response.body.message, /capacity/i);
+  });
+
+  it("rejects a ticket sale window extending past event start", async () => {
+    const admin = await createUser({ role: "ADMIN", email: uniqueEmail("sale-window-admin") });
+    const category = await createCategory();
+    const event = await createEvent({ admin, category });
+    const agent = await loginAgent(admin);
+
+    const response = await agent
+      .post("/api/admin/ticket-types")
+      .send(
+        ticketTypePayload(event.id, {
+          saleEndAt: new Date(event.startsAt.getTime() + 60 * 60 * 1000).toISOString()
+        })
+      )
+      .expect(400);
+
+    assert.match(response.body.message, /event starts/i);
   });
 
   it("public event ticket types endpoint returns active ticket types", async () => {
@@ -258,8 +345,23 @@ ticketTypeDescribe("ticket type management", () => {
         isActive: false
       }
     });
+    const futureSaleTicketType = await prisma.ticketType.create({
+      data: {
+        eventId: event.id,
+        name: `Future sale ${randomUUID()}`,
+        description: "Not on sale yet",
+        price: "499.00",
+        currency: "INR",
+        totalQuantity: 25,
+        availableQuantity: 25,
+        maxPerBooking: 5,
+        salesStartAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        isActive: true
+      }
+    });
     createdTicketTypeIds.add(activeTicketType.id);
     createdTicketTypeIds.add(inactiveTicketType.id);
+    createdTicketTypeIds.add(futureSaleTicketType.id);
 
     const response = await request(app)
       .get(`/api/events/${event.slug}/ticket-types`)
@@ -268,5 +370,62 @@ ticketTypeDescribe("ticket type management", () => {
 
     assert.ok(ticketTypeIds.includes(activeTicketType.id));
     assert.equal(ticketTypeIds.includes(inactiveTicketType.id), false);
+    assert.equal(ticketTypeIds.includes(futureSaleTicketType.id), false);
+  });
+
+  it("releases an expired sold-out hold before listing public ticket types", async () => {
+    const admin = await createUser({ role: "ADMIN", email: uniqueEmail("expiry-admin") });
+    const category = await createCategory();
+    const event = await createEvent({ admin, category, status: "PUBLISHED" });
+    const ticketType = await prisma.ticketType.create({
+      data: {
+        eventId: event.id,
+        name: `Held ${randomUUID()}`,
+        description: "Temporarily sold out by an expired hold",
+        price: "499.00",
+        currency: "INR",
+        totalQuantity: 1,
+        availableQuantity: 0,
+        maxPerBooking: 1,
+        isActive: true
+      }
+    });
+    createdTicketTypeIds.add(ticketType.id);
+    const booking = await prisma.booking.create({
+      data: {
+        bookingNumber: `BK-EXPIRED-${randomUUID()}`,
+        userId: admin.id,
+        eventId: event.id,
+        status: "PENDING",
+        quantity: 1,
+        subtotalAmount: "499.00",
+        discountAmount: "0.00",
+        totalAmount: "499.00",
+        currency: "INR",
+        expiresAt: new Date(Date.now() - 1_000),
+        items: {
+          create: {
+            ticketTypeId: ticketType.id,
+            quantity: 1,
+            unitPrice: "499.00",
+            totalAmount: "499.00"
+          }
+        }
+      }
+    });
+    createdBookingIds.add(booking.id);
+
+    const response = await request(app)
+      .get(`/api/events/${event.slug}/ticket-types`)
+      .expect(200);
+    const listedTicketType = response.body.data.ticketTypes.find(
+      (item) => item.id === ticketType.id
+    );
+    const updatedBooking = await prisma.booking.findUnique({
+      where: { id: booking.id }
+    });
+
+    assert.equal(listedTicketType.availableQuantity, 1);
+    assert.equal(updatedBooking.status, "CANCELLED");
   });
 });

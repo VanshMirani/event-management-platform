@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getAdminBooking } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
@@ -16,7 +16,7 @@ export function AdminBookingDetailPage() {
 
   useDocumentTitle("Admin Booking Detail | EventFlow");
 
-  async function loadBooking() {
+  const loadBooking = useCallback(async () => {
     setIsLoading(true);
     setError("");
 
@@ -27,11 +27,11 @@ export function AdminBookingDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [id]);
 
   useEffect(() => {
     loadBooking();
-  }, [id]);
+  }, [loadBooking]);
 
   return (
     <AppLayout>

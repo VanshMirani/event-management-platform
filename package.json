@@ -12,20 +12,21 @@
     "dev": "concurrently -n client,server -c cyan,green \"npm run dev --workspace client\" \"npm run dev --workspace server\"",
     "dev:client": "npm run dev --workspace client",
     "dev:server": "npm run dev --workspace server",
-    "build": "npm run build --workspace client",
+    "build": "npm run prisma:generate && npm run build --workspace client",
     "start": "npm run start --workspace server",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "prisma:generate": "npm run prisma:generate --workspace server",
     "prisma:migrate": "npm run prisma:migrate --workspace server",
+    "prisma:deploy": "npm run prisma:deploy --workspace server",
     "prisma:seed": "npm run prisma:seed --workspace server"
   },
   "engines": {
-    "node": ">=20.19.0"
+    "node": "^20.19.0 || >=22.12.0 <25"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
-    "concurrently": "^9.1.2",
+    "concurrently": "^9.2.4",
     "eslint": "^9.17.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.1.0",
@@ -33,10 +34,11 @@
     "globals": "^15.14.0"
   },
   "allowScripts": {
-    "@prisma/client@6.19.3": true,
-    "@prisma/engines@6.19.3": true,
-    "bcrypt@5.1.1": true,
-    "esbuild@0.21.5": true,
-    "prisma@6.19.3": true
+    "@prisma/client@6.12.0": true,
+    "@prisma/engines@6.12.0": true,
+    "bcrypt@6.0.0": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true,
+    "prisma@6.12.0": true
   }
 }

@@ -94,7 +94,7 @@ export function UserTicketsPage() {
                 </div>
                 {ticket.qrCodeUrl ? (
                   <img
-                    alt=""
+                    alt={`QR code for ticket ${ticket.ticketCode}`}
                     className="h-32 w-32 rounded-lg border border-cyan/20 bg-white object-contain p-2 shadow-lift"
                     src={ticket.qrCodeUrl}
                   />

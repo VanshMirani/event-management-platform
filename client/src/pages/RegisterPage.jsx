@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/index.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
+import {
+  getAuthNavigationState,
+  getAuthReturnPath
+} from "../utils/authReturnPath.js";
 
 const initialForm = {
   name: "",
@@ -36,6 +40,7 @@ export function RegisterPage() {
 
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,8 +72,9 @@ export function RegisterPage() {
         phone: form.phone || undefined,
         password: form.password
       });
-      navigate(user.role === "ADMIN" ? "/admin/dashboard" : "/user/dashboard", {
-        replace: true
+      navigate(getAuthReturnPath(location, user), {
+        replace: true,
+        state: null
       });
     } catch (submitError) {
       setError(submitError.message);
@@ -186,7 +192,11 @@ export function RegisterPage() {
 
           <p className="mt-5 text-center text-sm text-ink/65">
             Already have an account?{" "}
-            <Link className="font-bold text-mint hover:text-ember" to="/login">
+            <Link
+              className="font-bold text-mint hover:text-ember"
+              state={getAuthNavigationState(location)}
+              to="/login"
+            >
               Sign in
             </Link>
           </p>

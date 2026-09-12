@@ -9,7 +9,7 @@ export function errorHandler(err, _req, res, _next) {
       : err.message;
   const details = env.NODE_ENV === "production" ? null : err.details ?? err.stack;
 
-  if (env.NODE_ENV !== "test") {
+  if (env.NODE_ENV !== "test" && statusCode >= 500) {
     console.error(err);
   }
 

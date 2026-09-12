@@ -1,18 +1,18 @@
 import { z } from "zod";
 
 const optionalTextSchema = z.preprocess(
-  (value) => (value === "" ? undefined : value),
-  z.string().trim().max(500).optional()
+  (value) => (value === "" ? null : value),
+  z.string().trim().max(500).nullable().optional()
 );
 
 const optionalLongTextSchema = z.preprocess(
-  (value) => (value === "" ? undefined : value),
-  z.string().trim().max(5000).optional()
+  (value) => (value === "" ? null : value),
+  z.string().trim().max(5000).nullable().optional()
 );
 
 const optionalUrlSchema = z.preprocess(
-  (value) => (value === "" ? undefined : value),
-  z.string().trim().url().max(1000).optional()
+  (value) => (value === "" ? null : value),
+  z.string().trim().url().max(1000).nullable().optional()
 );
 
 const eventTypeSchema = z.enum(["ONLINE", "OFFLINE", "HYBRID"]);
@@ -55,6 +55,7 @@ export const createEventSchema = z.object({
       onlineUrl: optionalUrlSchema,
       startAt: z.string().datetime(),
       endAt: z.string().datetime(),
+      capacity: z.number().int().positive().nullable().optional(),
       status: eventStatusSchema.default("DRAFT"),
       isFeatured: z.boolean().optional(),
       bannerImage: optionalUrlSchema
@@ -81,6 +82,7 @@ export const updateEventSchema = z.object({
       onlineUrl: optionalUrlSchema,
       startAt: z.string().datetime().optional(),
       endAt: z.string().datetime().optional(),
+      capacity: z.number().int().positive().nullable().optional(),
       status: eventStatusSchema.optional(),
       isFeatured: z.boolean().optional(),
       bannerImage: optionalUrlSchema

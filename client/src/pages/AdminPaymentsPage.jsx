@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAdminPayments } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
@@ -9,26 +9,29 @@ import { formatCurrency } from "../utils/formatCurrency.js";
 import { formatDateTime } from "../utils/formatDate.js";
 
 const statusOptions = ["", "CREATED", "SUCCESS", "FAILED", "REFUNDED"];
-const providerOptions = ["", "razorpay"];
+const providerOptions = ["", "demo", "free", "razorpay"];
+const initialFilters = { status: "", provider: "", search: "" };
+const pageSize = 20;
 
 export function AdminPaymentsPage() {
   useDocumentTitle("Admin Payments | EventFlow");
 
   const [payments, setPayments] = useState([]);
   const [pagination, setPagination] = useState(null);
-  const [filters, setFilters] = useState({ status: "", provider: "", search: "" });
+  const [filters, setFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadPayments(nextFilters = filters) {
+  const loadPayments = useCallback(async (nextFilters, page = 1) => {
     setIsLoading(true);
     setError("");
 
     try {
       const data = await listAdminPayments({
         ...nextFilters,
-        page: 1,
-        limit: 20
+        page,
+        limit: pageSize
       });
       setPayments(data.payments);
       setPagination(data.pagination);
@@ -37,11 +40,11 @@ export function AdminPaymentsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadPayments();
-  }, []);
+    loadPayments(initialFilters, 1);
+  }, [loadPayments]);
 
   function updateFilter(event) {
     const { name, value } = event.target;
@@ -53,13 +56,16 @@ export function AdminPaymentsPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
-    loadPayments(filters);
+    const nextFilters = { ...filters };
+    setAppliedFilters(nextFilters);
+    loadPayments(nextFilters, 1);
   }
 
   function clearFilters() {
-    const nextFilters = { status: "", provider: "", search: "" };
+    const nextFilters = initialFilters;
     setFilters(nextFilters);
-    loadPayments(nextFilters);
+    setAppliedFilters(nextFilters);
+    loadPayments(nextFilters, 1);
   }
 
   return (
@@ -87,6 +93,7 @@ export function AdminPaymentsPage() {
         >
           <input
             className="rounded-lg border border-ink/15 px-4 py-3 text-sm text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+            aria-label="Search payments"
             name="search"
             onChange={updateFilter}
             placeholder="Search payment, booking, user, or event"
@@ -95,6 +102,7 @@ export function AdminPaymentsPage() {
           />
           <select
             className="rounded-lg border border-ink/15 px-4 py-3 text-sm text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+            aria-label="Filter payments by status"
             name="status"
             onChange={updateFilter}
             value={filters.status}
@@ -107,6 +115,7 @@ export function AdminPaymentsPage() {
           </select>
           <select
             className="rounded-lg border border-ink/15 px-4 py-3 text-sm text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+            aria-label="Filter payments by provider"
             name="provider"
             onChange={updateFilter}
             value={filters.provider}
@@ -140,7 +149,7 @@ export function AdminPaymentsPage() {
               <p className="text-sm font-semibold text-ember">{error}</p>
               <button
                 className="action-primary mt-4 px-4 py-2 text-sm font-bold"
-                onClick={() => loadPayments()}
+                onClick={() => loadPayments(appliedFilters, pagination?.page ?? 1)}
                 type="button"
               >
                 Retry
@@ -199,6 +208,32 @@ export function AdminPaymentsPage() {
             </div>
           )}
         </div>
+        {pagination?.totalPages > 1 ? (
+          <nav
+            aria-label="Payment list pages"
+            className="mt-5 flex flex-wrap items-center justify-between gap-3"
+          >
+            <button
+              className="action-secondary px-4 py-2 text-sm font-bold disabled:cursor-not-allowed"
+              disabled={isLoading || pagination.page <= 1}
+              onClick={() => loadPayments(appliedFilters, pagination.page - 1)}
+              type="button"
+            >
+              Previous
+            </button>
+            <p className="text-sm font-bold text-ink/60">
+              Page {pagination.page} of {pagination.totalPages}
+            </p>
+            <button
+              className="action-secondary px-4 py-2 text-sm font-bold disabled:cursor-not-allowed"
+              disabled={isLoading || pagination.page >= pagination.totalPages}
+              onClick={() => loadPayments(appliedFilters, pagination.page + 1)}
+              type="button"
+            >
+              Next
+            </button>
+          </nav>
+        ) : null}
       </section>
     </AppLayout>
   );

@@ -169,7 +169,7 @@ export function AdminCheckInPage() {
                 </div>
                 {ticket.qrCodeUrl ? (
                   <img
-                    alt=""
+                    alt={`QR code for ticket ${ticket.ticketCode}`}
                     className="h-40 w-40 rounded-lg border border-cyan/20 bg-white object-contain p-2 shadow-lift"
                     src={ticket.qrCodeUrl}
                   />

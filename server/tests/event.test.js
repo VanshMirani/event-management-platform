@@ -108,7 +108,8 @@ async function createEventRecord({
   category,
   status = "DRAFT",
   isFeatured = false,
-  title = `Public Event ${randomUUID()}`
+  title = `Public Event ${randomUUID()}`,
+  overrides = {}
 }) {
   const startsAt = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
   const endsAt = new Date(startsAt.getTime() + 2 * 60 * 60 * 1000);
@@ -125,9 +126,11 @@ async function createEventRecord({
       city: "Delhi",
       state: "Delhi",
       country: "India",
+      onlineUrl: "https://example.com/private-event-room",
       isFeatured,
       categoryId: category.id,
-      organizerId: admin.id
+      organizerId: admin.id,
+      ...overrides
     }
   });
 
@@ -177,7 +180,7 @@ eventDescribe("event management", () => {
 
     const response = await agent
       .post("/api/admin/events")
-      .send(eventPayload(category.id))
+      .send(eventPayload(category.id, { capacity: 250 }))
       .expect(201);
 
     createdEventIds.add(response.body.data.event.id);
@@ -185,6 +188,7 @@ eventDescribe("event management", () => {
     assert.equal(response.body.data.event.categoryId, category.id);
     assert.equal(response.body.data.event.organizerId, admin.id);
     assert.equal(response.body.data.event.status, "DRAFT");
+    assert.equal(response.body.data.event.capacity, 250);
     assert.ok(response.body.data.event.slug);
   });
 
@@ -222,6 +226,14 @@ eventDescribe("event management", () => {
 
     assert.equal(response.body.data.event.title, "Updated Event Title");
     assert.equal(response.body.data.event.city, "Bengaluru");
+
+    const clearedResponse = await agent
+      .patch(`/api/admin/events/${eventId}`)
+      .send({ description: null, city: null })
+      .expect(200);
+
+    assert.equal(clearedResponse.body.data.event.description, null);
+    assert.equal(clearedResponse.body.data.event.city, null);
   });
 
   it("admin can publish event", async () => {
@@ -238,6 +250,44 @@ eventDescribe("event management", () => {
     const response = await agent.patch(`/api/admin/events/${eventId}/publish`).expect(200);
 
     assert.equal(response.body.data.event.status, "PUBLISHED");
+  });
+
+  it("keeps published events upcoming when publish races a start-date update", async () => {
+    const admin = await createUser({ role: "ADMIN", email: uniqueEmail("event-race-admin") });
+    const category = await createCategory();
+    const agent = await loginAgent(admin);
+    const createResponse = await agent
+      .post("/api/admin/events")
+      .send(eventPayload(category.id))
+      .expect(201);
+    const eventId = createResponse.body.data.event.id;
+    createdEventIds.add(eventId);
+    const pastStart = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const pastEnd = new Date(pastStart.getTime() + 60 * 60 * 1000);
+
+    const [dateUpdateResponse, publishResponse] = await Promise.all([
+      agent.patch(`/api/admin/events/${eventId}`).send({
+        startAt: pastStart.toISOString(),
+        endAt: pastEnd.toISOString()
+      }),
+      agent.patch(`/api/admin/events/${eventId}/publish`)
+    ]);
+    const responseStatuses = [dateUpdateResponse.status, publishResponse.status].sort(
+      (left, right) => left - right
+    );
+    const savedEvent = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        status: true,
+        startsAt: true
+      }
+    });
+
+    assert.deepEqual(responseStatuses, [200, 400]);
+    assert.equal(
+      savedEvent.status === "PUBLISHED" && savedEvent.startsAt <= new Date(),
+      false
+    );
   });
 
   it("public list only shows published events", async () => {
@@ -288,6 +338,26 @@ eventDescribe("event management", () => {
     assert.equal(eventIds.includes(nonFeaturedEvent.id), false);
   });
 
+  it("does not list a published event that has already started", async () => {
+    const admin = await createUser({ role: "ADMIN", email: uniqueEmail("past-admin") });
+    const category = await createCategory();
+    const pastStart = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const pastEvent = await createEventRecord({
+      admin,
+      category,
+      status: "PUBLISHED",
+      overrides: {
+        startsAt: pastStart,
+        endsAt: new Date(pastStart.getTime() + 60 * 60 * 1000)
+      }
+    });
+
+    const response = await request(app).get("/api/events").expect(200);
+    const eventIds = response.body.data.events.map((event) => event.id);
+
+    assert.equal(eventIds.includes(pastEvent.id), false);
+  });
+
   it("public event detail returns published event by slug", async () => {
     const admin = await createUser({ role: "ADMIN", email: uniqueEmail("detail-admin") });
     const category = await createCategory();
@@ -302,6 +372,8 @@ eventDescribe("event management", () => {
 
     assert.equal(response.body.data.event.id, publishedEvent.id);
     assert.equal(response.body.data.event.status, "PUBLISHED");
+    assert.equal(response.body.data.event.onlineUrl, null);
+    assert.equal(Object.hasOwn(response.body.data.event.organizer, "email"), false);
   });
 
   it("draft events are not public", async () => {

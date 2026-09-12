@@ -93,7 +93,7 @@ All `/admin/*` routes require a valid authenticated user with role `ADMIN`. Norm
 
 ### GET `/admin/dashboard`
 
-Returns live admin dashboard stats, including user, event, booking, payment, and revenue counts plus recent bookings and payments.
+Returns live admin dashboard stats, including user, event, booking, payment, and confirmed-booking value totals plus recent bookings and payments.
 
 ### GET `/admin/users`
 

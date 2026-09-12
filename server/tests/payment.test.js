@@ -19,14 +19,17 @@ process.env.COOKIE_DOMAIN = "";
 process.env.RAZORPAY_KEY_ID = "rzp_test_key_id";
 process.env.RAZORPAY_KEY_SECRET = "test_razorpay_secret";
 process.env.RAZORPAY_WEBHOOK_SECRET = "test_razorpay_webhook_secret";
+process.env.DEMO_MODE = "true";
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 let app;
 let prisma;
+let runtimeEnv;
 
 if (hasDatabaseUrl) {
   ({ default: app } = await import("../src/app.js"));
   ({ prisma } = await import("../src/config/db.js"));
+  ({ env: runtimeEnv } = await import("../src/config/env.js"));
 }
 
 const paymentDescribe = hasDatabaseUrl ? describe : describe.skip;
@@ -49,6 +52,13 @@ function createRazorpaySignature(orderId, paymentId) {
   return crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
     .update(`${orderId}|${paymentId}`)
+    .digest("hex");
+}
+
+function createWebhookSignature(payload) {
+  return crypto
+    .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
+    .update(JSON.stringify(payload))
     .digest("hex");
 }
 
@@ -139,7 +149,7 @@ async function createTicketType(event, overrides = {}) {
   return ticketType;
 }
 
-async function createFixture() {
+async function createFixture({ ticketOverrides = {} } = {}) {
   const admin = await createUser({
     role: "ADMIN",
     email: uniqueEmail("payment-admin")
@@ -150,7 +160,7 @@ async function createFixture() {
   });
   const category = await createCategory();
   const event = await createEvent({ admin, category });
-  const ticketType = await createTicketType(event);
+  const ticketType = await createTicketType(event, ticketOverrides);
 
   return {
     admin,
@@ -161,8 +171,14 @@ async function createFixture() {
   };
 }
 
-async function createDirectBooking({ user, event, ticketType, status = "PENDING" }) {
-  const quantity = 2;
+async function createDirectBooking({
+  user,
+  event,
+  ticketType,
+  status = "PENDING",
+  quantity = 2,
+  expiresAt
+}) {
   const totalAmount = Number(ticketType.price) * quantity;
   const booking = await prisma.booking.create({
     data: {
@@ -175,7 +191,9 @@ async function createDirectBooking({ user, event, ticketType, status = "PENDING"
       discountAmount: 0,
       totalAmount,
       currency: ticketType.currency,
-      expiresAt: status === "PENDING" ? new Date(Date.now() + 10 * 60 * 1000) : null,
+      expiresAt:
+        expiresAt ??
+        (status === "PENDING" ? new Date(Date.now() + 10 * 60 * 1000) : null),
       confirmedAt: status === "CONFIRMED" ? new Date() : null,
       items: {
         create: {
@@ -209,6 +227,7 @@ function verifyPayment(agent, { bookingId, orderId, paymentId, signature }) {
 
 paymentDescribe("razorpay payments", () => {
   beforeEach(() => {
+    runtimeEnv.DEMO_MODE = false;
     lastRazorpayOrderRequest = null;
     global.fetch = async (_url, options) => {
       const body = JSON.parse(options.body);
@@ -366,6 +385,126 @@ paymentDescribe("razorpay payments", () => {
     assert.equal(response.body.status, "error");
   });
 
+  it("confirms a paid booking in demo mode without contacting Razorpay", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+    runtimeEnv.DEMO_MODE = true;
+
+    const response = await agent
+      .post("/api/payments/demo-confirm")
+      .send({ bookingId: booking.id })
+      .expect(200);
+    const retryResponse = await agent
+      .post("/api/payments/demo-confirm")
+      .send({ bookingId: booking.id })
+      .expect(200);
+    const payment = await prisma.payment.findUnique({
+      where: { bookingId: booking.id }
+    });
+    const ticketCount = await prisma.ticket.count({
+      where: { bookingId: booking.id }
+    });
+
+    assert.equal(response.body.data.booking.status, "CONFIRMED");
+    assert.equal(response.body.data.booking.payment.provider, "demo");
+    assert.equal(response.body.data.booking.payment.status, "SUCCESS");
+    assert.equal(retryResponse.body.data.booking.status, "CONFIRMED");
+    assert.equal(payment.amount.toString(), "500");
+    assert.equal(ticketCount, 2);
+    assert.equal(lastRazorpayOrderRequest, null);
+  });
+
+  it("cancels a demo hold when its event is no longer available", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+    runtimeEnv.DEMO_MODE = true;
+
+    await prisma.ticketType.update({
+      where: { id: ticketType.id },
+      data: {
+        availableQuantity: {
+          decrement: booking.quantity
+        }
+      }
+    });
+    await prisma.event.update({
+      where: { id: event.id },
+      data: { status: "CANCELLED" }
+    });
+
+    const response = await agent
+      .post("/api/payments/demo-confirm")
+      .send({ bookingId: booking.id })
+      .expect(409);
+    const updatedBooking = await prisma.booking.findUnique({
+      where: { id: booking.id }
+    });
+    const updatedTicketType = await prisma.ticketType.findUnique({
+      where: { id: ticketType.id }
+    });
+
+    assert.match(response.body.message, /event is no longer available/i);
+    assert.equal(updatedBooking.status, "CANCELLED");
+    assert.equal(updatedTicketType.availableQuantity, ticketType.totalQuantity);
+  });
+
+  it("confirms a free booking and generates tickets without a charge", async () => {
+    const { user, event, ticketType } = await createFixture({
+      ticketOverrides: {
+        price: "0.00"
+      }
+    });
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+    runtimeEnv.DEMO_MODE = true;
+
+    const response = await agent
+      .post("/api/payments/demo-confirm")
+      .send({ bookingId: booking.id })
+      .expect(200);
+    const payment = await prisma.payment.findUnique({
+      where: { bookingId: booking.id }
+    });
+    const ticketCount = await prisma.ticket.count({
+      where: { bookingId: booking.id }
+    });
+
+    assert.equal(response.body.data.booking.totalAmount, 0);
+    assert.equal(response.body.data.booking.payment.provider, "free");
+    assert.equal(payment.amount.toString(), "0");
+    assert.equal(ticketCount, 2);
+    assert.equal(lastRazorpayOrderRequest, null);
+  });
+
+  it("hides demo confirmation when DEMO_MODE is disabled", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+    const response = await agent
+      .post("/api/payments/demo-confirm")
+      .send({ bookingId: booking.id })
+      .expect(404);
+
+    assert.equal(response.body.status, "error");
+  });
+
+  it("hides real payment routes when DEMO_MODE is enabled", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+    runtimeEnv.DEMO_MODE = true;
+
+    const response = await agent
+      .post("/api/payments/razorpay/create-order")
+      .send({ bookingId: booking.id })
+      .expect(404);
+
+    assert.match(response.body.message, /disabled in demo mode/i);
+    assert.equal(lastRazorpayOrderRequest, null);
+  });
+
   it("verifies valid Razorpay signature", async () => {
     const { user, event, ticketType } = await createFixture();
     const booking = await createDirectBooking({ user, event, ticketType });
@@ -402,6 +541,96 @@ paymentDescribe("razorpay payments", () => {
     }).expect(400);
 
     assert.equal(response.body.status, "error");
+  });
+
+  it("rejects direct verification after expiry and restores reserved stock", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+    const orderResponse = await createOrder(agent, booking.id);
+    const orderId = orderResponse.body.data.order.id;
+    const paymentId = `pay_${randomUUID()}`;
+
+    await prisma.ticketType.update({
+      where: { id: ticketType.id },
+      data: {
+        availableQuantity: {
+          decrement: booking.quantity
+        }
+      }
+    });
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { expiresAt: new Date(Date.now() - 1_000) }
+    });
+
+    const response = await verifyPayment(agent, {
+      bookingId: booking.id,
+      orderId,
+      paymentId,
+      signature: createRazorpaySignature(orderId, paymentId)
+    }).expect(410);
+    const updatedBooking = await prisma.booking.findUnique({
+      where: { id: booking.id },
+      include: { payment: true }
+    });
+    const updatedTicketType = await prisma.ticketType.findUnique({
+      where: { id: ticketType.id }
+    });
+
+    assert.match(response.body.message, /expired/i);
+    assert.equal(updatedBooking.status, "CANCELLED");
+    assert.equal(updatedBooking.payment.status, "FAILED");
+    assert.equal(updatedTicketType.availableQuantity, ticketType.totalQuantity);
+  });
+
+  it("refuses an expired booking webhook and restores reserved stock", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const booking = await createDirectBooking({ user, event, ticketType });
+    const agent = await loginAgent(user);
+    const orderResponse = await createOrder(agent, booking.id);
+    const orderId = orderResponse.body.data.order.id;
+    const payload = {
+      event: "payment.captured",
+      payload: {
+        payment: {
+          entity: {
+            id: `pay_${randomUUID()}`,
+            order_id: orderId
+          }
+        }
+      }
+    };
+
+    await prisma.ticketType.update({
+      where: { id: ticketType.id },
+      data: {
+        availableQuantity: {
+          decrement: booking.quantity
+        }
+      }
+    });
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { expiresAt: new Date(Date.now() - 1_000) }
+    });
+
+    const response = await request(app)
+      .post("/api/webhooks/razorpay")
+      .set("x-razorpay-signature", createWebhookSignature(payload))
+      .send(payload)
+      .expect(200);
+    const updatedBooking = await prisma.booking.findUnique({
+      where: { id: booking.id }
+    });
+    const updatedTicketType = await prisma.ticketType.findUnique({
+      where: { id: ticketType.id }
+    });
+
+    assert.equal(response.body.data.processed, false);
+    assert.equal(response.body.data.reason, "booking_expired");
+    assert.equal(updatedBooking.status, "CANCELLED");
+    assert.equal(updatedTicketType.availableQuantity, ticketType.totalQuantity);
   });
 
   it("confirms booking after verified payment", async () => {

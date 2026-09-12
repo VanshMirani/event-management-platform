@@ -15,6 +15,7 @@ const initialForm = {
   onlineUrl: "",
   startAt: "",
   endAt: "",
+  capacity: "",
   isFeatured: false,
   bannerImage: ""
 };
@@ -37,6 +38,7 @@ function toFormState(event) {
     onlineUrl: event.onlineUrl ?? "",
     startAt: toDateTimeLocalValue(event.startAt),
     endAt: toDateTimeLocalValue(event.endAt),
+    capacity: event.capacity == null ? "" : String(event.capacity),
     isFeatured: Boolean(event.isFeatured),
     bannerImage: event.bannerImage ?? ""
   };
@@ -59,12 +61,19 @@ function validateForm(form) {
     return "End date must be after start date.";
   }
 
+  if (
+    form.capacity &&
+    (!Number.isInteger(Number(form.capacity)) || Number(form.capacity) <= 0)
+  ) {
+    return "Capacity must be a positive whole number.";
+  }
+
   return "";
 }
 
 function optionalValue(value) {
   const normalized = value.trim();
-  return normalized || undefined;
+  return normalized || null;
 }
 
 function toPayload(form) {
@@ -81,6 +90,7 @@ function toPayload(form) {
     onlineUrl: optionalValue(form.onlineUrl),
     startAt: fromDateTimeLocalValue(form.startAt),
     endAt: fromDateTimeLocalValue(form.endAt),
+    capacity: form.capacity ? Number(form.capacity) : null,
     isFeatured: form.isFeatured,
     bannerImage: optionalValue(form.bannerImage)
   };
@@ -337,7 +347,23 @@ export function AdminEventForm({
           />
         </div>
 
-        <label className="flex items-center gap-3 rounded-lg border border-ink/10 bg-linen px-4 py-3 text-sm font-bold text-ink">
+        <div>
+          <label className="text-sm font-bold text-ink" htmlFor="capacity">
+            Event capacity <span className="font-normal text-ink/50">(optional)</span>
+          </label>
+          <input
+            className="mt-2 w-full rounded-lg border border-ink/15 px-4 py-3 text-ink outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/15"
+            id="capacity"
+            min="1"
+            name="capacity"
+            onChange={updateField}
+            step="1"
+            type="number"
+            value={form.capacity}
+          />
+        </div>
+
+        <label className="flex items-center gap-3 self-end rounded-lg border border-ink/10 bg-linen px-4 py-3 text-sm font-bold text-ink">
           <input
             checked={form.isFeatured}
             name="isFeatured"

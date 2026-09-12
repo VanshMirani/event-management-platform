@@ -18,8 +18,8 @@ export async function getAdminDashboard() {
   return response.data.dashboard;
 }
 
-export async function listAdminUsers() {
-  const response = await apiGet("/admin/users");
+export async function listAdminUsers(params = {}) {
+  const response = await apiGet(`/admin/users${buildQuery(params)}`);
   return response.data;
 }
 

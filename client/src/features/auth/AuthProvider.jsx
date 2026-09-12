@@ -5,6 +5,7 @@ import {
   logoutRequest,
   registerRequest
 } from "../../api/auth.js";
+import { subscribeToUnauthorized } from "../../api/http.js";
 import { AuthContext } from "./AuthContext.js";
 
 export function AuthProvider({ children }) {
@@ -37,6 +38,15 @@ export function AuthProvider({ children }) {
     refreshCurrentUser();
   }, [refreshCurrentUser]);
 
+  useEffect(
+    () =>
+      subscribeToUnauthorized(() => {
+        setCurrentUser(null);
+        setIsCheckingAuth(false);
+      }),
+    []
+  );
+
   const login = useCallback(async (credentials) => {
     setAuthError("");
     const user = await loginRequest(credentials);
@@ -51,15 +61,17 @@ export function AuthProvider({ children }) {
     return user;
   }, []);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (beforeSessionClear) => {
     setAuthError("");
 
     try {
       await logoutRequest();
+      beforeSessionClear?.();
+      setCurrentUser(null);
+      return true;
     } catch (error) {
       setAuthError(error.message);
-    } finally {
-      setCurrentUser(null);
+      return false;
     }
   }, []);
 

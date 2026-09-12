@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { createBooking } from "../api/bookings.js";
 import { getPublicEvent, listPublicEventTicketTypes } from "../api/events.js";
+import { EventLocation } from "../components/EventLocation.jsx";
 import { useAuth } from "../features/auth/index.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
@@ -165,7 +166,7 @@ export function EventDetailPage() {
       ) : (
         <section className="mx-auto w-full max-w-6xl px-5 py-10 lg:py-14">
           <img
-            alt=""
+            alt={`${event.title} event banner`}
             className="h-[320px] w-full rounded-lg border border-slate-200 object-cover shadow-glow"
             src={event.bannerImage || fallbackImage}
           />
@@ -240,11 +241,9 @@ export function EventDetailPage() {
               <p className="mt-4 text-sm font-bold text-ink">Ends</p>
               <p className="mt-1 text-sm text-ink/70">{formatDateTime(event.endAt)}</p>
               <p className="mt-4 text-sm font-bold text-ink">Location</p>
-              <p className="mt-1 text-sm text-ink/70">
-                {[event.venueName, event.city, event.country].filter(Boolean).join(", ") ||
-                  event.onlineUrl ||
-                  "To be announced"}
-              </p>
+              <div className="mt-1 text-sm">
+                <EventLocation event={event} />
+              </div>
 
               <div className="mt-6 border-t border-ink/10 pt-5">
                 <p className="text-sm font-semibold uppercase tracking-wide text-mint">

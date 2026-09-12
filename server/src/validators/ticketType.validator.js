@@ -1,16 +1,20 @@
 import { z } from "zod";
 
 const optionalTextSchema = z.preprocess(
-  (value) => (value === "" ? undefined : value),
-  z.string().trim().max(500).optional()
+  (value) => (value === "" ? null : value),
+  z.string().trim().max(500).nullable().optional()
 );
 
 const optionalDateSchema = z.preprocess(
-  (value) => (value === "" ? undefined : value),
-  z.string().datetime().optional()
+  (value) => (value === "" ? null : value),
+  z.string().datetime().nullable().optional()
 );
 
 const ticketTypeStatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
+const currencySchema = z.preprocess(
+  (value) => (typeof value === "string" ? value.trim().toUpperCase() : value),
+  z.literal("INR")
+);
 
 function validateSaleWindow(body, context) {
   if (
@@ -51,7 +55,7 @@ export const createTicketTypeSchema = z.object({
       name: z.string().trim().min(2).max(100),
       description: optionalTextSchema,
       price: z.number().nonnegative(),
-      currency: z.string().trim().min(3).max(3).default("INR"),
+      currency: currencySchema.default("INR"),
       totalQuantity: z.number().int().positive(),
       maxPerUser: z.number().int().positive().default(5),
       saleStartAt: optionalDateSchema,
@@ -71,7 +75,7 @@ export const updateTicketTypeSchema = z.object({
       name: z.string().trim().min(2).max(100).optional(),
       description: optionalTextSchema,
       price: z.number().nonnegative().optional(),
-      currency: z.string().trim().min(3).max(3).optional(),
+      currency: currencySchema.optional(),
       totalQuantity: z.number().int().positive().optional(),
       maxPerUser: z.number().int().positive().optional(),
       saleStartAt: optionalDateSchema,

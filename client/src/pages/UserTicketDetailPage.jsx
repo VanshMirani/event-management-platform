@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { downloadTicketPdf, getTicket } from "../api/tickets.js";
+import { EventLocation } from "../components/EventLocation.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
@@ -16,7 +17,7 @@ export function UserTicketDetailPage() {
 
   useDocumentTitle("Ticket | EventFlow");
 
-  async function loadTicket() {
+  const loadTicket = useCallback(async () => {
     setIsLoading(true);
     setError("");
 
@@ -27,11 +28,11 @@ export function UserTicketDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [id]);
 
   useEffect(() => {
     loadTicket();
-  }, [id]);
+  }, [loadTicket]);
 
   async function handleDownload() {
     setIsDownloading(true);
@@ -81,11 +82,9 @@ export function UserTicketDetailPage() {
               <p className="mt-3 text-sm text-ink/65">
                 {formatDateTime(ticket.event?.startsAt)}
               </p>
-              <p className="mt-1 text-sm text-ink/65">
-                {[ticket.event?.venueName, ticket.event?.city, ticket.event?.country]
-                  .filter(Boolean)
-                  .join(", ") || ticket.event?.onlineUrl || "To be announced"}
-              </p>
+              <div className="mt-1 text-sm">
+                <EventLocation event={ticket.event} />
+              </div>
               <div className="mt-6 rounded-lg border border-cyan/10 bg-cyan/5 p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-ink/45">
                   Ticket code
@@ -117,7 +116,7 @@ export function UserTicketDetailPage() {
             {ticket.qrCodeUrl ? (
               <div className="flex items-center justify-center rounded-lg border border-cyan/15 bg-cyan/5 p-5">
                 <img
-                  alt=""
+                  alt={`QR code for ticket ${ticket.ticketCode}`}
                   className="h-56 w-56 rounded-lg border border-cyan/20 bg-white object-contain p-3 shadow-lift"
                   src={ticket.qrCodeUrl}
                 />

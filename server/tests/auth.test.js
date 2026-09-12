@@ -47,6 +47,14 @@ function assertSetsAuthCookies(response) {
   );
 }
 
+function getCookie(response, name) {
+  const cookie = (response.headers["set-cookie"] ?? []).find((value) =>
+    value.startsWith(`${name}=`)
+  );
+
+  return cookie?.split(";")[0] ?? null;
+}
+
 function assertDoesNotExposePasswordHash(user) {
   assert.equal(Object.hasOwn(user, "passwordHash"), false);
 }
@@ -179,6 +187,79 @@ authDescribe("auth routes", () => {
     assert.ok(cookies.some((cookie) => cookie.startsWith("accessToken=;")));
     assert.ok(cookies.some((cookie) => cookie.startsWith("refreshToken=;")));
     await agent.get("/api/auth/me").expect(401);
+  });
+
+  it("refreshes an access token from the refresh cookie", async () => {
+    const email = uniqueEmail("refresh");
+    await createUser({ email });
+    const loginResponse = await request(app)
+      .post("/api/auth/login")
+      .send({ email, password })
+      .expect(200);
+    const refreshCookie = getCookie(loginResponse, "refreshToken");
+
+    const refreshResponse = await request(app)
+      .post("/api/auth/refresh")
+      .set("Cookie", refreshCookie)
+      .expect(200);
+    const accessCookie = getCookie(refreshResponse, "accessToken");
+
+    assert.equal(refreshResponse.body.data.user.email, email);
+    assertDoesNotExposePasswordHash(refreshResponse.body.data.user);
+    assert.ok(accessCookie);
+    assert.equal(getCookie(refreshResponse, "refreshToken"), null);
+
+    const meResponse = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", accessCookie)
+      .expect(200);
+    assert.equal(meResponse.body.data.user.email, email);
+  });
+
+  it("rejects a missing or wrong token type on refresh and clears cookies", async () => {
+    const missingResponse = await request(app).post("/api/auth/refresh").expect(401);
+    const clearedCookies = missingResponse.headers["set-cookie"] ?? [];
+
+    assert.ok(clearedCookies.some((cookie) => cookie.startsWith("accessToken=;")));
+    assert.ok(clearedCookies.some((cookie) => cookie.startsWith("refreshToken=;")));
+
+    const email = uniqueEmail("refresh-token-type");
+    await createUser({ email });
+    const loginResponse = await request(app)
+      .post("/api/auth/login")
+      .send({ email, password })
+      .expect(200);
+    const accessCookie = getCookie(loginResponse, "accessToken");
+    const accessToken = accessCookie.slice("accessToken=".length);
+
+    await request(app)
+      .post("/api/auth/refresh")
+      .set("Cookie", `refreshToken=${accessToken}`)
+      .expect(401);
+  });
+
+  it("rejects refresh for a user blocked after login", async () => {
+    const email = uniqueEmail("refresh-blocked");
+    const user = await createUser({ email });
+    const loginResponse = await request(app)
+      .post("/api/auth/login")
+      .send({ email, password })
+      .expect(200);
+    const refreshCookie = getCookie(loginResponse, "refreshToken");
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { status: "BLOCKED" }
+    });
+
+    const response = await request(app)
+      .post("/api/auth/refresh")
+      .set("Cookie", refreshCookie)
+      .expect(403);
+    const cookies = response.headers["set-cookie"] ?? [];
+
+    assert.ok(cookies.some((cookie) => cookie.startsWith("accessToken=;")));
+    assert.ok(cookies.some((cookie) => cookie.startsWith("refreshToken=;")));
   });
 
   it("protected route rejects unauthenticated user", async () => {

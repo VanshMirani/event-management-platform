@@ -55,7 +55,7 @@ const sampleEvents = [
     city: "Mumbai",
     state: "Maharashtra",
     country: "India",
-    onlineUrl: "https://events.example.com/cloud-builders-summit",
+    onlineUrl: "https://meet.jit.si/EventFlow-Cloud-Builders-Demo",
     capacity: 500,
     startsAt: daysFromNow(21, 10),
     endsAt: daysFromNow(21, 18),
@@ -124,7 +124,7 @@ const sampleEvents = [
     type: "ONLINE",
     city: "Online",
     country: "India",
-    onlineUrl: "https://events.example.com/startup-growth-workshop",
+    onlineUrl: "https://meet.jit.si/EventFlow-Startup-Growth-Demo",
     capacity: 300,
     startsAt: daysFromNow(14, 14),
     endsAt: daysFromNow(14, 17),
@@ -204,6 +204,8 @@ async function seedEvents(admin, categoryBySlug) {
     });
 
     for (const ticketType of ticketTypes) {
+      const { availableQuantity: initialAvailability, ...ticketTypeUpdates } = ticketType;
+
       await prisma.ticketType.upsert({
         where: {
           eventId_name: {
@@ -211,9 +213,11 @@ async function seedEvents(admin, categoryBySlug) {
             name: ticketType.name
           }
         },
-        update: ticketType,
+        // Do not replenish sold/reserved inventory when a deployment is reseeded.
+        update: ticketTypeUpdates,
         create: {
-          ...ticketType,
+          ...ticketTypeUpdates,
+          availableQuantity: initialAvailability,
           eventId: savedEvent.id
         }
       });

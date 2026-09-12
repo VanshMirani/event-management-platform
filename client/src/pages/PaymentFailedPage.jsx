@@ -4,7 +4,8 @@ import { AppLayout } from "../layouts/AppLayout.jsx";
 
 export function PaymentFailedPage() {
   const location = useLocation();
-  const bookingId = location.state?.bookingId;
+  const bookingId =
+    new URLSearchParams(location.search).get("bookingId") ?? location.state?.bookingId;
   const message = location.state?.message ?? "Payment could not be completed.";
 
   useDocumentTitle("Payment Failed | EventFlow");

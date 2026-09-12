@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { createHttpError } from "../utils/httpError.js";
 import { createSlug } from "../utils/slug.js";
+import { releaseExpiredPendingBookings } from "./booking.service.js";
 
 const SAFE_USER_SELECT = {
   id: true,
@@ -729,6 +730,7 @@ export async function deleteCategory(categoryId) {
 }
 
 export async function listAdminBookings(query = {}) {
+  await releaseExpiredPendingBookings();
   const { page, limit, skip } = parsePagination(query);
   const where = buildBookingWhere(query);
   const [bookings, total] = await Promise.all([
@@ -756,6 +758,7 @@ export async function listAdminBookings(query = {}) {
 }
 
 export async function getAdminBooking(bookingId) {
+  await releaseExpiredPendingBookings({ bookingId });
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     select: BOOKING_DETAIL_SELECT
@@ -769,6 +772,7 @@ export async function getAdminBooking(bookingId) {
 }
 
 export async function listAdminPayments(query = {}) {
+  await releaseExpiredPendingBookings();
   const { page, limit, skip } = parsePagination(query);
   const where = buildPaymentWhere(query);
   const [payments, total] = await Promise.all([
@@ -796,6 +800,7 @@ export async function listAdminPayments(query = {}) {
 }
 
 export async function getAdminPayment(paymentId) {
+  await releaseExpiredPendingBookings();
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     select: PAYMENT_DETAIL_SELECT
@@ -809,6 +814,7 @@ export async function getAdminPayment(paymentId) {
 }
 
 export async function getAdminDashboardData() {
+  await releaseExpiredPendingBookings();
   const [
     totalUsers,
     totalEvents,
@@ -817,7 +823,7 @@ export async function getAdminDashboardData() {
     pendingBookings,
     totalPayments,
     successfulPayments,
-    revenue,
+    confirmedValue,
     recentBookings,
     recentPayments
   ] = await Promise.all([
@@ -828,10 +834,10 @@ export async function getAdminDashboardData() {
     prisma.booking.count({ where: { status: "PENDING" } }),
     prisma.payment.count(),
     prisma.payment.count({ where: { status: "SUCCESS" } }),
-    prisma.payment.aggregate({
-      where: { status: "SUCCESS" },
+    prisma.booking.aggregate({
+      where: { status: "CONFIRMED" },
       _sum: {
-        amount: true
+        totalAmount: true
       }
     }),
     prisma.booking.findMany({
@@ -859,7 +865,7 @@ export async function getAdminDashboardData() {
       pendingBookings,
       totalPayments,
       successfulPayments,
-      totalRevenue: toMoney(revenue._sum.amount ?? 0)
+      totalConfirmedValue: toMoney(confirmedValue._sum.totalAmount ?? 0)
     },
     recentBookings: recentBookings.map(mapBookingSummary),
     recentPayments: recentPayments.map(mapPaymentSummary)

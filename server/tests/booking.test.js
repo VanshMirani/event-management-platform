@@ -83,7 +83,7 @@ async function createCategory() {
   return category;
 }
 
-async function createEvent({ admin, category, status = "PUBLISHED" }) {
+async function createEvent({ admin, category, status = "PUBLISHED", overrides = {} }) {
   const startsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   const endsAt = new Date(startsAt.getTime() + 2 * 60 * 60 * 1000);
   const event = await prisma.event.create({
@@ -100,7 +100,8 @@ async function createEvent({ admin, category, status = "PUBLISHED" }) {
       state: "Maharashtra",
       country: "India",
       categoryId: category.id,
-      organizerId: admin.id
+      organizerId: admin.id,
+      ...overrides
     }
   });
   createdEventIds.add(event.id);
@@ -127,7 +128,11 @@ async function createTicketType(event, overrides = {}) {
   return ticketType;
 }
 
-async function createFixture({ eventStatus = "PUBLISHED", ticketOverrides = {} } = {}) {
+async function createFixture({
+  eventStatus = "PUBLISHED",
+  eventOverrides = {},
+  ticketOverrides = {}
+} = {}) {
   const admin = await createUser({
     role: "ADMIN",
     email: uniqueEmail("booking-admin")
@@ -137,7 +142,12 @@ async function createFixture({ eventStatus = "PUBLISHED", ticketOverrides = {} }
     email: uniqueEmail("booking-customer")
   });
   const category = await createCategory();
-  const event = await createEvent({ admin, category, status: eventStatus });
+  const event = await createEvent({
+    admin,
+    category,
+    status: eventStatus,
+    overrides: eventOverrides
+  });
   const ticketType = await createTicketType(event, ticketOverrides);
 
   return {
@@ -277,6 +287,37 @@ bookingDescribe("booking backend", () => {
     assert.equal(updatedTicketType.availableQuantity, ticketType.availableQuantity - 2);
   });
 
+  it("reveals an online event link only after the booking is confirmed", async () => {
+    const onlineUrl = "https://meet.jit.si/EventFlow-Booking-Test";
+    const { user, event, ticketType } = await createFixture({
+      eventOverrides: {
+        type: "ONLINE",
+        onlineUrl
+      }
+    });
+    const agent = await loginAgent(user);
+    const createResponse = await agent
+      .post("/api/bookings")
+      .send(bookingPayload(event, ticketType, { quantity: 1 }))
+      .expect(201);
+    const bookingId = createResponse.body.data.booking.id;
+    createdBookingIds.add(bookingId);
+
+    assert.equal(createResponse.body.data.booking.event.onlineUrl, null);
+
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: "CONFIRMED",
+        confirmedAt: new Date(),
+        expiresAt: null
+      }
+    });
+
+    const confirmedResponse = await agent.get(`/api/bookings/${bookingId}`).expect(200);
+    assert.equal(confirmedResponse.body.data.booking.event.onlineUrl, onlineUrl);
+  });
+
   it("unauthenticated user cannot create booking", async () => {
     const { event, ticketType } = await createFixture();
 
@@ -347,6 +388,114 @@ bookingDescribe("booking backend", () => {
       .expect(400);
 
     assert.equal(response.body.status, "error");
+  });
+
+  it("enforces maxPerUser cumulatively across active bookings", async () => {
+    const { user, event, ticketType } = await createFixture({
+      ticketOverrides: {
+        maxPerBooking: 5
+      }
+    });
+    const agent = await loginAgent(user);
+
+    const firstResponse = await agent
+      .post("/api/bookings")
+      .send(bookingPayload(event, ticketType, { quantity: 3 }))
+      .expect(201);
+    createdBookingIds.add(firstResponse.body.data.booking.id);
+
+    const response = await agent
+      .post("/api/bookings")
+      .send(bookingPayload(event, ticketType, { quantity: 3 }))
+      .expect(400);
+
+    assert.match(response.body.message, /cumulative quantity/i);
+  });
+
+  it("releases an expired pending reservation exactly once", async () => {
+    const { user, event, ticketType } = await createFixture();
+    const agent = await loginAgent(user);
+    const createResponse = await agent
+      .post("/api/bookings")
+      .send(bookingPayload(event, ticketType, { quantity: 2 }))
+      .expect(201);
+    const bookingId = createResponse.body.data.booking.id;
+    createdBookingIds.add(bookingId);
+
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { expiresAt: new Date(Date.now() - 1_000) }
+    });
+
+    const firstResponse = await agent.get(`/api/bookings/${bookingId}`).expect(200);
+    const secondResponse = await agent.get(`/api/bookings/${bookingId}`).expect(200);
+    const updatedTicketType = await prisma.ticketType.findUnique({
+      where: { id: ticketType.id },
+      select: { availableQuantity: true }
+    });
+
+    assert.equal(firstResponse.body.data.booking.status, "CANCELLED");
+    assert.ok(firstResponse.body.data.booking.cancelledAt);
+    assert.equal(secondResponse.body.data.booking.status, "CANCELLED");
+    assert.equal(updatedTicketType.availableQuantity, ticketType.totalQuantity);
+  });
+
+  it("rejects booking an event that has already started", async () => {
+    const pastStart = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const pastEnd = new Date(Date.now() - 60 * 60 * 1000);
+    const { user, event, ticketType } = await createFixture({
+      eventOverrides: {
+        startsAt: pastStart,
+        endsAt: pastEnd
+      }
+    });
+    const agent = await loginAgent(user);
+
+    const response = await agent
+      .post("/api/bookings")
+      .send(bookingPayload(event, ticketType, { quantity: 1 }))
+      .expect(400);
+
+    assert.match(response.body.message, /already started or ended/i);
+  });
+
+  it("enforces event capacity across users and ticket types", async () => {
+    const { user, event, ticketType } = await createFixture({
+      eventOverrides: {
+        capacity: 2
+      }
+    });
+    const otherUser = await createUser({ email: uniqueEmail("booking-capacity-other") });
+    const firstAgent = await loginAgent(user);
+    const secondAgent = await loginAgent(otherUser);
+    const firstResponse = await firstAgent
+      .post("/api/bookings")
+      .send(bookingPayload(event, ticketType, { quantity: 2 }))
+      .expect(201);
+    createdBookingIds.add(firstResponse.body.data.booking.id);
+
+    const response = await secondAgent
+      .post("/api/bookings")
+      .send(bookingPayload(event, ticketType, { quantity: 1 }))
+      .expect(409);
+
+    assert.match(response.body.message, /event capacity/i);
+  });
+
+  it("rejects booking before the ticket sale window opens", async () => {
+    const { user, event, ticketType } = await createFixture({
+      ticketOverrides: {
+        salesStartAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      }
+    });
+    const agent = await loginAgent(user);
+
+    const response = await agent
+      .post("/api/bookings")
+      .send(bookingPayload(event, ticketType, { quantity: 1 }))
+      .expect(400);
+
+    assert.match(response.body.message, /not started/i);
   });
 
   it("backend calculates amount from ticket type price", async () => {

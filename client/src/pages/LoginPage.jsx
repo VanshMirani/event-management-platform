@@ -3,26 +3,15 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/index.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
+import {
+  getAuthNavigationState,
+  getAuthReturnPath
+} from "../utils/authReturnPath.js";
 
 const initialForm = {
   email: "",
   password: ""
 };
-
-function getDashboardPath(user) {
-  return user?.role === "ADMIN" ? "/admin/dashboard" : "/user/dashboard";
-}
-
-function getReturnPath(location, user) {
-  const from = location.state?.from;
-  const pathname = from?.pathname;
-
-  if (!pathname || pathname === "/login") {
-    return getDashboardPath(user);
-  }
-
-  return `${pathname}${from.search ?? ""}${from.hash ?? ""}`;
-}
 
 function validateLoginForm(form) {
   if (!form.email.trim()) {
@@ -76,8 +65,9 @@ export function LoginPage() {
         email: form.email,
         password: form.password
       });
-      navigate(getReturnPath(location, user), {
-        replace: true
+      navigate(getAuthReturnPath(location, user), {
+        replace: true,
+        state: null
       });
     } catch (submitError) {
       setError(submitError.message);
@@ -170,7 +160,11 @@ export function LoginPage() {
 
           <p className="mt-5 text-center text-sm text-ink/65">
             New to EventFlow?{" "}
-            <Link className="font-bold text-mint hover:text-ember" to="/register">
+            <Link
+              className="font-bold text-mint hover:text-ember"
+              state={getAuthNavigationState(location)}
+              to="/register"
+            >
               Create an account
             </Link>
           </p>

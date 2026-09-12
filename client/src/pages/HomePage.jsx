@@ -1,14 +1,10 @@
+import { useEffect, useState } from "react";
+import { listPublicEvents } from "../api/events.js";
 import { FeaturePill } from "../components/FeaturePill.jsx";
 import { EventHighlights } from "../features/events/EventHighlights.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { Link } from "react-router-dom";
-
-const metrics = [
-  { label: "Live events", value: "42" },
-  { label: "Bookings", value: "8.7k" },
-  { label: "Cities", value: "12" }
-];
 
 const platformHighlights = [
   {
@@ -21,7 +17,7 @@ const platformHighlights = [
   },
   {
     title: "QR-ready operations",
-    body: "Confirmed payments generate QR tickets that admins can verify and mark used at the venue."
+    body: "Confirmed bookings generate QR tickets that admins can verify and mark used at the venue."
   }
 ];
 
@@ -34,17 +30,53 @@ const workflowSteps = [
   {
     label: "02",
     title: "Book",
-    body: "Users choose tickets, create a pending booking, and continue through Razorpay checkout."
+    body: "Users choose tickets, create a pending booking, and continue through secure checkout."
   },
   {
     label: "03",
     title: "Check in",
-    body: "Successful payments confirm bookings and unlock QR tickets for fast event entry."
+    body: "Confirmed bookings unlock QR tickets for fast event entry."
   }
 ];
 
 export function HomePage() {
   useDocumentTitle("EventFlow | Event Management Platform");
+
+  const [eventStats, setEventStats] = useState(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadEventStats() {
+      try {
+        const events = await listPublicEvents();
+
+        if (isCurrent) {
+          setEventStats({
+            published: events.length,
+            cities: new Set(events.map((event) => event.city).filter(Boolean)).size,
+            featured: events.filter((event) => event.isFeatured).length
+          });
+        }
+      } catch {
+        if (isCurrent) {
+          setEventStats({ published: "—", cities: "—", featured: "—" });
+        }
+      }
+    }
+
+    loadEventStats();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  const metrics = [
+    { label: "Published events", value: eventStats?.published ?? "—" },
+    { label: "Cities represented", value: eventStats?.cities ?? "—" },
+    { label: "Featured picks", value: eventStats?.featured ?? "—" }
+  ];
 
   return (
     <AppLayout>
@@ -58,7 +90,7 @@ export function HomePage() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/70">
             A JavaScript workspace for event discovery, bookings, admin
-            operations, secure cookies, and Razorpay payments.
+            operations, secure cookies, and verified booking confirmations.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
@@ -77,7 +109,6 @@ export function HomePage() {
         </div>
 
         <div
-          aria-label="Event audience"
           className="surface-card min-h-[390px] overflow-hidden rounded-lg bg-cover bg-center shadow-glow"
           style={{
             backgroundImage:

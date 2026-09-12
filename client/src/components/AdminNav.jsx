@@ -15,26 +15,38 @@ export function AdminNav() {
   const location = useLocation();
 
   return (
-    <nav className="surface-card flex flex-wrap gap-2 rounded-lg p-2">
-      {adminLinks.map((link) => {
-        const isActive =
-          link.to === location.pathname ||
-          (link.to !== "/admin/dashboard" && location.pathname.startsWith(`${link.to}/`));
+    <nav
+      aria-label="Admin navigation"
+      className="surface-card overflow-x-auto rounded-lg p-2"
+    >
+      <div className="flex min-w-max gap-2">
+        {adminLinks.map((link) => {
+          const isExactMatch = link.to === location.pathname;
+          const isDetailMatch =
+            (link.to === "/admin/events" &&
+              /^\/admin\/events\/[^/]+\/edit$/.test(location.pathname)) ||
+            (link.to === "/admin/bookings" &&
+              location.pathname.startsWith("/admin/bookings/")) ||
+            (link.to === "/admin/payments" &&
+              location.pathname.startsWith("/admin/payments/"));
+          const isActive = isExactMatch || isDetailMatch;
 
-        return (
-          <Link
-            className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
-              isActive
-                ? "action-primary shadow-lift"
-                : "text-ink/65 hover:bg-cyan/10 hover:text-cyan"
-            }`}
-            key={link.label}
-            to={link.to}
-          >
-            {link.label}
-          </Link>
-        );
-      })}
+          return (
+            <Link
+              aria-current={isActive ? "page" : undefined}
+              className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
+                isActive
+                  ? "action-primary shadow-lift"
+                  : "text-ink/65 hover:bg-cyan/10 hover:text-cyan"
+              }`}
+              key={link.label}
+              to={link.to}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

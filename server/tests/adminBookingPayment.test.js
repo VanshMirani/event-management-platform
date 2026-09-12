@@ -372,7 +372,7 @@ adminOperationsDescribe("admin bookings and payments", () => {
     assert.ok(stats.confirmedBookings >= 1);
     assert.ok(stats.totalPayments >= 1);
     assert.ok(stats.successfulPayments >= 1);
-    assert.ok(stats.totalRevenue >= 600);
+    assert.ok(stats.totalConfirmedValue >= 600);
     assert.ok(Array.isArray(recentBookings));
     assert.ok(Array.isArray(recentPayments));
   });

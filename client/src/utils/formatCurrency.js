@@ -1,7 +1,11 @@
 export function formatCurrency(amount, currency = "INR") {
+  const numericAmount = Number(amount);
+  const hasFraction = Number.isFinite(numericAmount) && !Number.isInteger(numericAmount);
+
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0
-  }).format(amount);
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: 2
+  }).format(numericAmount);
 }

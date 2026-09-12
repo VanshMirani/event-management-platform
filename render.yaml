@@ -1,0 +1,37 @@
+databases:
+  - name: eventflow-db
+    databaseName: eventflow
+    user: eventflow
+    plan: free
+    ipAllowList: []
+
+services:
+  - type: web
+    name: eventflow-demo
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run prisma:deploy && npm start
+    initialDeployHook: npm run prisma:seed
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eventflow-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: DEMO_MODE
+        value: "true"
+      - key: VITE_ENABLE_DEMO_CHECKOUT
+        value: "true"
+      - key: ADMIN_NAME
+        value: Demo Admin
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

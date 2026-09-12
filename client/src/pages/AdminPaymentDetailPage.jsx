@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getAdminPayment } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
@@ -16,7 +16,7 @@ export function AdminPaymentDetailPage() {
 
   useDocumentTitle("Admin Payment Detail | EventFlow");
 
-  async function loadPayment() {
+  const loadPayment = useCallback(async () => {
     setIsLoading(true);
     setError("");
 
@@ -27,11 +27,11 @@ export function AdminPaymentDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [id]);
 
   useEffect(() => {
     loadPayment();
-  }, [id]);
+  }, [loadPayment]);
 
   return (
     <AppLayout>

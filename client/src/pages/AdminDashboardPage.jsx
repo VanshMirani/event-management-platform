@@ -49,7 +49,7 @@ const dashboardCards = [
     id: "payments",
     title: "Payments",
     status: "Live",
-    body: "Monitor Razorpay orders, captures, and payment status.",
+    body: "Review payment records, including clearly identified demo confirmations.",
     to: "/admin/payments"
   },
   {
@@ -106,7 +106,7 @@ export function AdminDashboardPage() {
           </p>
         </div>
 
-        <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {dashboardCards.map((card) => (
             <Link
               className="surface-card rounded-lg p-5 transition hover:-translate-y-1 hover:border-cyan/40 hover:shadow-glow"
@@ -161,7 +161,7 @@ export function AdminDashboardPage() {
             </p>
           ) : (
             <>
-              <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="surface-card rounded-lg p-5">
                   <p className="text-sm font-extrabold uppercase tracking-wide text-mint">
                     Users
@@ -191,19 +191,19 @@ export function AdminDashboardPage() {
                 </div>
                 <div className="surface-card rounded-lg p-5">
                   <p className="text-sm font-extrabold uppercase tracking-wide text-mint">
-                    Revenue
+                    Confirmed booking value
                   </p>
                   <p className="mt-2 text-3xl font-extrabold text-ink">
-                    {formatCurrency(stats.totalRevenue)}
+                    {formatCurrency(stats.totalConfirmedValue)}
                   </p>
                   <p className="mt-1 text-xs font-bold text-ink/50">
-                    {stats.successfulPayments} successful payments
+                    {stats.successfulPayments} successful confirmations
                   </p>
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-5 lg:grid-cols-2">
-                <div className="surface-card rounded-lg p-5">
+              <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div className="surface-card min-w-0 rounded-lg p-5">
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="text-lg font-extrabold text-ink">Recent bookings</h3>
                     <Link className="text-sm font-bold text-mint hover:text-ember" to="/admin/bookings">
@@ -218,8 +218,8 @@ export function AdminDashboardPage() {
                     ) : (
                       dashboard.recentBookings.map((booking) => (
                         <div className="py-4" key={booking.id}>
-                          <p className="font-bold text-ink">{booking.bookingCode}</p>
-                          <p className="mt-1 text-sm text-ink/65">
+                          <p className="break-all font-bold text-ink">{booking.bookingCode}</p>
+                          <p className="mt-1 break-words text-sm text-ink/65">
                             {booking.user?.email} <StatusBadge className="mx-2" status={booking.status} />{" "}
                             {formatCurrency(booking.finalAmount, booking.currency)}
                           </p>
@@ -229,7 +229,7 @@ export function AdminDashboardPage() {
                   </div>
                 </div>
 
-                <div className="surface-card rounded-lg p-5">
+                <div className="surface-card min-w-0 rounded-lg p-5">
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="text-lg font-extrabold text-ink">Recent payments</h3>
                     <Link className="text-sm font-bold text-mint hover:text-ember" to="/admin/payments">
@@ -244,7 +244,9 @@ export function AdminDashboardPage() {
                     ) : (
                       dashboard.recentPayments.map((payment) => (
                         <div className="py-4" key={payment.id}>
-                          <p className="font-bold text-ink">{payment.providerPaymentId ?? payment.id}</p>
+                          <p className="break-all font-bold text-ink">
+                            {payment.providerPaymentId ?? payment.id}
+                          </p>
                           <p className="mt-1 text-sm text-ink/65">
                             <StatusBadge className="mr-2" status={payment.status} />{" "}
                             {formatCurrency(payment.amount, payment.currency)} -{" "}

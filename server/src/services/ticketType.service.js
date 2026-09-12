@@ -1,6 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../config/db.js";
 import { createHttpError } from "../utils/httpError.js";
+import { releaseExpiredPendingBookings } from "./booking.service.js";
+
+const SERIALIZABLE_TRANSACTION_ATTEMPTS = 3;
 
 const TICKET_TYPE_SELECT = {
   id: true,
@@ -48,19 +51,42 @@ function mapTicketTypeList(ticketTypes) {
   return ticketTypes.map(toTicketTypeResponse);
 }
 
-async function ensureEventExists(eventId) {
-  const event = await prisma.event.findUnique({
+async function runSerializableTransaction(callback) {
+  for (let attempt = 1; attempt <= SERIALIZABLE_TRANSACTION_ATTEMPTS; attempt += 1) {
+    try {
+      return await prisma.$transaction(callback, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      });
+    } catch (error) {
+      if (error?.code !== "P2034" || attempt === SERIALIZABLE_TRANSACTION_ATTEMPTS) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("Unable to complete ticket inventory transaction");
+}
+
+async function ensureEventExists(eventId, db = prisma) {
+  const event = await db.event.findUnique({
     where: { id: eventId },
-    select: { id: true }
+    select: {
+      id: true,
+      startsAt: true,
+      endsAt: true,
+      capacity: true
+    }
   });
 
   if (!event) {
     throw createHttpError(400, "Event does not exist");
   }
+
+  return event;
 }
 
-async function getExistingTicketType(ticketTypeId) {
-  const ticketType = await prisma.ticketType.findUnique({
+async function getExistingTicketType(ticketTypeId, db = prisma) {
+  const ticketType = await db.ticketType.findUnique({
     where: { id: ticketTypeId },
     select: TICKET_TYPE_SELECT
   });
@@ -122,23 +148,100 @@ function mapCommonTicketTypeData(input) {
   return data;
 }
 
+function ensureSaleWindowFitsEvent({ salesStartAt, salesEndAt, event }) {
+  if (salesStartAt && salesEndAt && salesEndAt <= salesStartAt) {
+    throw createHttpError(400, "saleEndAt must be after saleStartAt");
+  }
+
+  if (salesStartAt && salesStartAt >= event.startsAt) {
+    throw createHttpError(400, "saleStartAt must be before the event starts");
+  }
+
+  if (salesEndAt && salesEndAt > event.startsAt) {
+    throw createHttpError(400, "saleEndAt cannot be after the event starts");
+  }
+}
+
+async function ensureTicketInventoryFitsCapacity({
+  event,
+  totalQuantity,
+  currentTicketTypeId = null,
+  db = prisma
+}) {
+  if (event.capacity === null) {
+    return;
+  }
+
+  const otherTicketTypes = await db.ticketType.aggregate({
+    where: {
+      eventId: event.id,
+      ...(currentTicketTypeId
+        ? {
+            NOT: {
+              id: currentTicketTypeId
+            }
+          }
+        : {})
+    },
+    _sum: {
+      totalQuantity: true
+    }
+  });
+
+  if ((otherTicketTypes._sum.totalQuantity ?? 0) + totalQuantity > event.capacity) {
+    throw createHttpError(400, "Ticket inventory exceeds event capacity");
+  }
+}
+
+async function ensureTicketTypeRules({
+  event,
+  totalQuantity,
+  maxPerUser,
+  salesStartAt,
+  salesEndAt,
+  currentTicketTypeId = null,
+  db = prisma
+}) {
+  if (maxPerUser > totalQuantity) {
+    throw createHttpError(400, "maxPerUser cannot exceed totalQuantity");
+  }
+
+  ensureSaleWindowFitsEvent({ salesStartAt, salesEndAt, event });
+  await ensureTicketInventoryFitsCapacity({
+    event,
+    totalQuantity,
+    currentTicketTypeId,
+    db
+  });
+}
+
 export async function createAdminTicketType(input) {
-  await ensureEventExists(input.eventId);
-
   try {
-    const ticketType = await prisma.ticketType.create({
-      data: {
-        ...mapCommonTicketTypeData(input),
-        eventId: input.eventId,
+    return await runSerializableTransaction(async (tx) => {
+      const event = await ensureEventExists(input.eventId, tx);
+      await ensureTicketTypeRules({
+        event,
         totalQuantity: input.totalQuantity,
-        availableQuantity: input.totalQuantity,
-        currency: input.currency.trim().toUpperCase(),
-        maxPerBooking: input.maxPerUser
-      },
-      select: TICKET_TYPE_SELECT
-    });
+        maxPerUser: input.maxPerUser,
+        salesStartAt: input.saleStartAt ? new Date(input.saleStartAt) : null,
+        salesEndAt: input.saleEndAt ? new Date(input.saleEndAt) : null,
+        db: tx
+      });
 
-    return toTicketTypeResponse(ticketType);
+      const ticketType = await tx.ticketType.create({
+        data: {
+          ...mapCommonTicketTypeData(input),
+          eventId: input.eventId,
+          totalQuantity: input.totalQuantity,
+          availableQuantity: input.totalQuantity,
+          currency: input.currency.trim().toUpperCase(),
+          maxPerBooking: input.maxPerUser
+        },
+        select: TICKET_TYPE_SELECT
+      });
+
+      return toTicketTypeResponse(ticketType);
+    });
   } catch (error) {
     handleTicketTypeWriteError(error);
   }
@@ -146,6 +249,7 @@ export async function createAdminTicketType(input) {
 
 export async function listAdminTicketTypesForEvent(eventId) {
   await ensureEventExists(eventId);
+  await releaseExpiredPendingBookings({ eventId });
 
   const ticketTypes = await prisma.ticketType.findMany({
     where: { eventId },
@@ -159,28 +263,57 @@ export async function listAdminTicketTypesForEvent(eventId) {
 }
 
 export async function updateAdminTicketType(ticketTypeId, input) {
-  const existingTicketType = await getExistingTicketType(ticketTypeId);
-  const soldQuantity =
-    existingTicketType.totalQuantity - existingTicketType.availableQuantity;
-  const data = mapCommonTicketTypeData(input);
-
-  if (input.totalQuantity !== undefined) {
-    if (input.totalQuantity < soldQuantity) {
-      throw createHttpError(400, "totalQuantity cannot be less than soldQuantity");
-    }
-
-    data.totalQuantity = input.totalQuantity;
-    data.availableQuantity = input.totalQuantity - soldQuantity;
-  }
+  await releaseExpiredPendingBookings({ ticketTypeId });
 
   try {
-    const ticketType = await prisma.ticketType.update({
-      where: { id: ticketTypeId },
-      data,
-      select: TICKET_TYPE_SELECT
-    });
+    return await runSerializableTransaction(async (tx) => {
+      const existingTicketType = await getExistingTicketType(ticketTypeId, tx);
+      const event = await ensureEventExists(existingTicketType.eventId, tx);
+      const soldQuantity =
+        existingTicketType.totalQuantity - existingTicketType.availableQuantity;
+      const data = mapCommonTicketTypeData(input);
+      const totalQuantity = input.totalQuantity ?? existingTicketType.totalQuantity;
+      const maxPerUser = input.maxPerUser ?? existingTicketType.maxPerBooking;
+      const salesStartAt =
+        input.saleStartAt !== undefined
+          ? input.saleStartAt
+            ? new Date(input.saleStartAt)
+            : null
+          : existingTicketType.salesStartAt;
+      const salesEndAt =
+        input.saleEndAt !== undefined
+          ? input.saleEndAt
+            ? new Date(input.saleEndAt)
+            : null
+          : existingTicketType.salesEndAt;
 
-    return toTicketTypeResponse(ticketType);
+      if (input.totalQuantity !== undefined) {
+        if (input.totalQuantity < soldQuantity) {
+          throw createHttpError(400, "totalQuantity cannot be less than soldQuantity");
+        }
+
+        data.totalQuantity = input.totalQuantity;
+        data.availableQuantity = input.totalQuantity - soldQuantity;
+      }
+
+      await ensureTicketTypeRules({
+        event,
+        totalQuantity,
+        maxPerUser,
+        salesStartAt,
+        salesEndAt,
+        currentTicketTypeId: ticketTypeId,
+        db: tx
+      });
+
+      const ticketType = await tx.ticketType.update({
+        where: { id: ticketTypeId },
+        data,
+        select: TICKET_TYPE_SELECT
+      });
+
+      return toTicketTypeResponse(ticketType);
+    });
   } catch (error) {
     handleTicketTypeWriteError(error);
   }
@@ -203,10 +336,14 @@ export async function deleteAdminTicketType(ticketTypeId) {
 }
 
 export async function listPublicTicketTypesForEventSlug(slug) {
+  const now = new Date();
   const event = await prisma.event.findFirst({
     where: {
       slug,
-      status: "PUBLISHED"
+      status: "PUBLISHED",
+      startsAt: {
+        gt: now
+      }
     },
     select: {
       id: true
@@ -217,10 +354,23 @@ export async function listPublicTicketTypesForEventSlug(slug) {
     throw createHttpError(404, "Event not found");
   }
 
+  await releaseExpiredPendingBookings({ eventId: event.id, now });
+
   const ticketTypes = await prisma.ticketType.findMany({
     where: {
       eventId: event.id,
-      isActive: true
+      isActive: true,
+      availableQuantity: {
+        gt: 0
+      },
+      AND: [
+        {
+          OR: [{ salesStartAt: null }, { salesStartAt: { lte: now } }]
+        },
+        {
+          OR: [{ salesEndAt: null }, { salesEndAt: { gte: now } }]
+        }
+      ]
     },
     orderBy: {
       price: "asc"
