@@ -1,6 +1,6 @@
 databases:
-  # Immutable Blueprint resource ID; the Render display name is
-  # "event-management-platform-db".
+  # Hidden Blueprint/database resource ID. Keep this stable so Render updates
+  # the existing database instead of creating a replacement.
   - name: eventflow-db
     databaseName: eventflow
     user: eventflow
@@ -33,7 +33,7 @@ services:
       - key: VITE_ENABLE_DEMO_CHECKOUT
         value: "true"
       - key: ADMIN_NAME
-        value: Event Management Platform Admin
+        value: EventFlow Admin
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD

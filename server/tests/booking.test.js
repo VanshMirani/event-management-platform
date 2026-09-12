@@ -288,7 +288,7 @@ bookingDescribe("booking backend", () => {
   });
 
   it("reveals an online event link only after the booking is confirmed", async () => {
-    const onlineUrl = "https://meet.jit.si/EventManagementPlatform-Booking-Test";
+    const onlineUrl = "https://meet.jit.si/EventFlow-Booking-Test";
     const { user, event, ticketType } = await createFixture({
       eventOverrides: {
         type: "ONLINE",

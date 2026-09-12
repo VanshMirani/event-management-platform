@@ -29,7 +29,7 @@ export function CheckoutPage() {
   const [error, setError] = useState("");
   const [paymentError, setPaymentError] = useState("");
 
-  useDocumentTitle("Checkout | Event Management Platform");
+  useDocumentTitle("Checkout | EventFlow");
 
   const loadBooking = useCallback(async () => {
     setIsLoading(true);
@@ -125,7 +125,7 @@ export function CheckoutPage() {
         key,
         amount: razorpayOrder.order.amount,
         currency: razorpayOrder.order.currency,
-        name: "Event Management Platform",
+        name: "EventFlow",
         description: booking.event?.title ?? "Event booking",
         order_id: razorpayOrder.order.id,
         prefill: {

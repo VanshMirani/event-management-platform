@@ -62,7 +62,7 @@ const dashboardCards = [
 ];
 
 export function AdminDashboardPage() {
-  useDocumentTitle("Admin Dashboard | Event Management Platform");
+  useDocumentTitle("Admin Dashboard | EventFlow");
 
   const { currentUser } = useAuth();
   const [dashboard, setDashboard] = useState(null);

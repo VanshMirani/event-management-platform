@@ -13,7 +13,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 
 export function AdminEventEditPage() {
-  useDocumentTitle("Edit Event | Event Management Platform");
+  useDocumentTitle("Edit Event | EventFlow");
 
   const { id } = useParams();
   const navigate = useNavigate();

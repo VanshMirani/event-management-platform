@@ -7,7 +7,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 
 export function AdminEventCreatePage() {
-  useDocumentTitle("Create Event | Event Management Platform");
+  useDocumentTitle("Create Event | EventFlow");
 
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);

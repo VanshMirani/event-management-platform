@@ -1,6 +1,6 @@
-# Event Management Platform
+# EventFlow
 
-Event Management Platform is a full-stack event management project built with React, Express,
+EventFlow is a full-stack event management project built with React, Express,
 PostgreSQL, and Prisma. It includes public event discovery, account management,
 ticket booking, QR tickets, an admin dashboard, and ticket check-in.
 

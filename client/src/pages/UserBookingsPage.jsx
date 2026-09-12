@@ -12,7 +12,7 @@ export function UserBookingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useDocumentTitle("My Bookings | Event Management Platform");
+  useDocumentTitle("My Bookings | EventFlow");
 
   async function loadBookings() {
     setIsLoading(true);

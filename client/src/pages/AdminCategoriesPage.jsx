@@ -27,7 +27,7 @@ function validateCategoryForm(form) {
 }
 
 export function AdminCategoriesPage() {
-  useDocumentTitle("Admin Categories | Event Management Platform");
+  useDocumentTitle("Admin Categories | EventFlow");
 
   const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(initialForm);

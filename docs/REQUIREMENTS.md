@@ -1,4 +1,4 @@
-# Event Management Platform requirements
+# EventFlow requirements
 
 ## In scope
 

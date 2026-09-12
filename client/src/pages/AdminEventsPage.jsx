@@ -13,7 +13,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 
 export function AdminEventsPage() {
-  useDocumentTitle("Admin Events | Event Management Platform");
+  useDocumentTitle("Admin Events | EventFlow");
 
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -11,7 +11,7 @@ export function UserTicketsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useDocumentTitle("My Tickets | Event Management Platform");
+  useDocumentTitle("My Tickets | EventFlow");
 
   async function loadTickets() {
     setIsLoading(true);

@@ -8,7 +8,7 @@ export function PaymentFailedPage() {
     new URLSearchParams(location.search).get("bookingId") ?? location.state?.bookingId;
   const message = location.state?.message ?? "Payment could not be completed.";
 
-  useDocumentTitle("Payment Failed | Event Management Platform");
+  useDocumentTitle("Payment Failed | EventFlow");
 
   return (
     <AppLayout>

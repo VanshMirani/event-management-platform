@@ -30,7 +30,7 @@ function validateLoginForm(form) {
 }
 
 export function LoginPage() {
-  useDocumentTitle("Login | Event Management Platform");
+  useDocumentTitle("Login | EventFlow");
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -87,7 +87,7 @@ export function LoginPage() {
             Sign in to manage your events.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-ink/70">
-            Use your Event Management Platform account to review bookings, manage tickets, or open
+            Use your EventFlow account to review bookings, manage tickets, or open
             the admin workspace.
           </p>
           <div className="mt-6 grid gap-3 text-sm font-bold text-ink/70 sm:grid-cols-3">
@@ -159,7 +159,7 @@ export function LoginPage() {
           </button>
 
           <p className="mt-5 text-center text-sm text-ink/65">
-            New to Event Management Platform?{" "}
+            New to EventFlow?{" "}
             <Link
               className="font-bold text-mint hover:text-ember"
               state={getAuthNavigationState(location)}

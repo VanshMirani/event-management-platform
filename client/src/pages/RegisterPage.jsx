@@ -36,7 +36,7 @@ function validateRegisterForm(form) {
 }
 
 export function RegisterPage() {
-  useDocumentTitle("Register | Event Management Platform");
+  useDocumentTitle("Register | EventFlow");
 
   const { register } = useAuth();
   const navigate = useNavigate();
