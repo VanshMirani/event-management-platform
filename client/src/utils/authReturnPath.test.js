@@ -63,3 +63,20 @@ test("preserves a return route when the signed-in role can access it", () => {
     "/checkout/booking-123"
   );
 });
+
+test("preserves a scanned QR token through the admin login return", () => {
+  assert.equal(
+    getAuthReturnPath(
+      {
+        state: {
+          from: {
+            pathname: "/admin/check-in",
+            search: "?token=temporary-qr-token"
+          }
+        }
+      },
+      { role: "ADMIN" }
+    ),
+    "/admin/check-in?token=temporary-qr-token"
+  );
+});

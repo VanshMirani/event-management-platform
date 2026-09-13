@@ -516,6 +516,75 @@ ticketDescribe("QR tickets", () => {
     assert.ok(usedResponse.body.data.ticket.checkedInAt);
   });
 
+  it("admin can list check-in tickets and attendee details for a selected event", async () => {
+    const { admin, user, event, booking, ticketType } = await createFixture({
+      quantity: 2
+    });
+    const userAgent = await loginAgent(user);
+    const adminAgent = await loginAgent(admin);
+
+    await confirmBookingWithPayment(userAgent, booking.id);
+
+    const initialResponse = await adminAgent
+      .get(`/api/admin/events/${event.id}/check-in-tickets`)
+      .expect(200);
+    const listedTickets = initialResponse.body.data.tickets;
+
+    assert.equal(initialResponse.body.data.event.id, event.id);
+    assert.equal(initialResponse.body.data.event.title, event.title);
+    assert.deepEqual(initialResponse.body.data.summary, {
+      total: 2,
+      ready: 2,
+      checkedIn: 0
+    });
+    assert.equal(listedTickets.length, 2);
+    assert.equal(listedTickets[0].user.id, user.id);
+    assert.equal(listedTickets[0].user.name, user.name);
+    assert.equal(listedTickets[0].user.email, user.email);
+    assert.equal(listedTickets[0].booking.id, booking.id);
+    assert.equal(listedTickets[0].booking.status, "CONFIRMED");
+    assert.equal(listedTickets[0].ticketType.id, ticketType.id);
+    assert.equal(listedTickets[0].ticketType.name, ticketType.name);
+    assert.equal(listedTickets[0].status, "VALID");
+    assert.equal(listedTickets[0].checkedInAt, null);
+    assert.equal(Object.hasOwn(listedTickets[0], "qrCodeHash"), false);
+    assert.equal(Object.hasOwn(listedTickets[0], "qrCodeUrl"), false);
+
+    await adminAgent
+      .post("/api/admin/check-in/mark-used")
+      .send({ ticketCode: listedTickets[0].ticketCode })
+      .expect(200);
+
+    const usedResponse = await adminAgent
+      .get(
+        `/api/admin/events/${event.id}/check-in-tickets?status=USED&search=${encodeURIComponent(
+          user.email
+        )}`
+      )
+      .expect(200);
+
+    assert.equal(usedResponse.body.data.tickets.length, 1);
+    assert.equal(usedResponse.body.data.tickets[0].id, listedTickets[0].id);
+    assert.equal(usedResponse.body.data.tickets[0].status, "USED");
+    assert.ok(usedResponse.body.data.tickets[0].checkedInAt);
+    assert.deepEqual(usedResponse.body.data.summary, {
+      total: 1,
+      ready: 0,
+      checkedIn: 1
+    });
+  });
+
+  it("does not allow a normal user to list event check-in tickets", async () => {
+    const { user, event } = await createFixture({ quantity: 1 });
+    const agent = await loginAgent(user);
+
+    const response = await agent
+      .get(`/api/admin/events/${event.id}/check-in-tickets`)
+      .expect(403);
+
+    assert.equal(response.body.status, "error");
+  });
+
   it("rejects check-in while the event is not published", async () => {
     const { admin, user, event, booking } = await createFixture({ quantity: 1 });
     const userAgent = await loginAgent(user);

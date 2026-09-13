@@ -17,3 +17,13 @@ export const checkInLookupSchema = z.object({
       message: "ticketCode or qrToken is required"
     })
 });
+
+export const eventCheckInTicketsSchema = z.object({
+  params: z.object({
+    eventId: z.string().trim().min(1)
+  }),
+  query: z.object({
+    status: z.enum(["ALL", "VALID", "USED"]).default("ALL"),
+    search: z.string().trim().max(200).optional()
+  })
+});

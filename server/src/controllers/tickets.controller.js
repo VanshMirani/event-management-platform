@@ -2,6 +2,7 @@ import {
   createTicketPdf,
   findTicketForCheckIn,
   getUserTicket,
+  listTicketsForEventCheckIn,
   listUserTickets,
   markTicketUsedForCheckIn
 } from "../services/ticket.service.js";
@@ -36,6 +37,18 @@ export async function downloadTicket(req, res, next) {
       `attachment; filename="${ticket.ticketCode}.pdf"`
     );
     return res.status(200).send(pdf);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getEventCheckInTickets(req, res, next) {
+  try {
+    const data = await listTicketsForEventCheckIn(
+      req.validated.params.eventId,
+      req.validated.query
+    );
+    return sendSuccess(res, data, "Event check-in tickets fetched");
   } catch (error) {
     return next(error);
   }

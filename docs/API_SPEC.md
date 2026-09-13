@@ -409,6 +409,61 @@ Requires authentication. Returns a PDF ticket download containing event details,
 
 All check-in routes require an authenticated `ADMIN`.
 
+### GET `/admin/events/:eventId/check-in-tickets`
+
+Returns the check-in-ready and already-used tickets for one selected event. The response includes each ticket's code and status, the attendee's safe profile fields, booking confirmation details, and ticket type. QR image data and the stored QR hash are not exposed by this endpoint.
+
+Optional query parameters:
+
+- `status`: `ALL` (default), `VALID`, or `USED`
+- `search`: case-insensitive ticket code, booking number, attendee name, or attendee email
+
+Response data:
+
+```json
+{
+  "event": {
+    "id": "event-id",
+    "title": "Design Leadership Summit",
+    "status": "PUBLISHED",
+    "eventType": "OFFLINE",
+    "startAt": "2026-09-20T04:30:00.000Z",
+    "endAt": "2026-09-20T11:30:00.000Z",
+    "venueName": "The Convention Centre",
+    "city": "Mumbai"
+  },
+  "tickets": [
+    {
+      "id": "ticket-id",
+      "ticketCode": "TCK-example",
+      "status": "VALID",
+      "checkedInAt": null,
+      "user": {
+        "id": "user-id",
+        "name": "Aarav Mehta",
+        "email": "aarav@example.com",
+        "phone": null
+      },
+      "booking": {
+        "id": "booking-id",
+        "bookingNumber": "BK-example",
+        "status": "CONFIRMED",
+        "confirmedAt": "2026-09-10T09:00:00.000Z"
+      },
+      "ticketType": {
+        "id": "ticket-type-id",
+        "name": "General Admission"
+      }
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "ready": 1,
+    "checkedIn": 0
+  }
+}
+```
+
 ### POST `/admin/check-in/verify`
 
 Verifies a ticket by `ticketCode` or raw `qrToken`.

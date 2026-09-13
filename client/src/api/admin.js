@@ -62,6 +62,13 @@ export async function getAdminEvent(eventId) {
   return response.data.event;
 }
 
+export async function listAdminEventCheckInTickets(eventId, params = {}) {
+  const response = await apiGet(
+    `/admin/events/${encodeURIComponent(eventId)}/check-in-tickets${buildQuery(params)}`
+  );
+  return response.data;
+}
+
 export async function createAdminEvent(data) {
   const response = await apiPost("/admin/events", data);
   return response.data.event;

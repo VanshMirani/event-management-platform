@@ -114,6 +114,50 @@ const BOOKING_FOR_TICKETS_SELECT = {
   }
 };
 
+const CHECK_IN_EVENT_SELECT = {
+  id: true,
+  title: true,
+  status: true,
+  type: true,
+  startsAt: true,
+  endsAt: true,
+  venueName: true,
+  city: true
+};
+
+const CHECK_IN_TICKET_SELECT = {
+  id: true,
+  ticketNumber: true,
+  status: true,
+  usedAt: true,
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true
+    }
+  },
+  booking: {
+    select: {
+      id: true,
+      bookingNumber: true,
+      status: true,
+      confirmedAt: true
+    }
+  },
+  bookingItem: {
+    select: {
+      ticketType: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
+    }
+  }
+};
+
 function createTicketCode() {
   return `TCK-${crypto.randomUUID()}`;
 }
@@ -286,6 +330,107 @@ export async function getUserTicket(ticketId, userId) {
   }
 
   return toTicketResponse(ticket);
+}
+
+export async function listTicketsForEventCheckIn(eventId, query = {}) {
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: CHECK_IN_EVENT_SELECT
+  });
+
+  if (!event) {
+    throw createHttpError(404, "Event not found");
+  }
+
+  const search = query.search?.trim();
+  const ticketStatus = query.status ?? "ALL";
+  const tickets = await prisma.ticket.findMany({
+    where: {
+      eventId,
+      status:
+        ticketStatus === "ALL"
+          ? {
+              in: ["VALID", "USED"]
+            }
+          : ticketStatus,
+      ...(search
+        ? {
+            OR: [
+              {
+                ticketNumber: {
+                  contains: search,
+                  mode: "insensitive"
+                }
+              },
+              {
+                user: {
+                  name: {
+                    contains: search,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              {
+                user: {
+                  email: {
+                    contains: search,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              {
+                booking: {
+                  bookingNumber: {
+                    contains: search,
+                    mode: "insensitive"
+                  }
+                }
+              }
+            ]
+          }
+        : {})
+    },
+    orderBy: [
+      {
+        user: {
+          name: "asc"
+        }
+      },
+      {
+        ticketNumber: "asc"
+      }
+    ],
+    select: CHECK_IN_TICKET_SELECT
+  });
+
+  const checkInTickets = tickets.map((ticket) => ({
+    id: ticket.id,
+    ticketCode: ticket.ticketNumber,
+    status: ticket.status,
+    checkedInAt: ticket.usedAt,
+    user: ticket.user,
+    booking: ticket.booking,
+    ticketType: ticket.bookingItem?.ticketType ?? null
+  }));
+
+  return {
+    event: {
+      id: event.id,
+      title: event.title,
+      status: event.status,
+      eventType: event.type,
+      startAt: event.startsAt,
+      endAt: event.endsAt,
+      venueName: event.venueName,
+      city: event.city
+    },
+    tickets: checkInTickets,
+    summary: {
+      total: checkInTickets.length,
+      ready: checkInTickets.filter((ticket) => ticket.status === "VALID").length,
+      checkedIn: checkInTickets.filter((ticket) => ticket.status === "USED").length
+    }
+  };
 }
 
 export async function findTicketForCheckIn({ ticketCode, qrToken }) {

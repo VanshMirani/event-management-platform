@@ -27,7 +27,7 @@
 - `/admin/bookings/:id` - admin-only booking detail view
 - `/admin/payments` - admin-only payment table with status/provider/search filters
 - `/admin/payments/:id` - admin-only payment detail view
-- `/admin/check-in` - admin-only ticket verification and check-in tool
+- `/admin/check-in` - admin-only event/attendee ticket selection, QR or manual verification, and check-in tool
 
 ## Auth Behavior
 
@@ -55,6 +55,9 @@
   expose publish/unpublish controls; terminal event statuses keep lifecycle controls
   locked. Updating an existing event returns to the event list.
 - Admin bookings and payments pages use paginated backend data and never depend on frontend-trusted role, amount, or payment status.
-- Admin check-in accepts a ticket code, raw QR token, or scanned check-in URL and
-  blocks duplicate check-ins.
+- Admin check-in lists published events and their booked attendee tickets so desk
+  staff can select a person without knowing the ticket code. Selecting a ticket
+  verifies it and shows the attendee, booking, ticket type, and status before the
+  separate check-in action. QR URLs, raw scanner values, and manually entered
+  ticket codes remain available, and duplicate check-ins stay blocked.
 - Public event cards link to `/events/:slug`; event details let authenticated users create pending bookings and pay from checkout.
