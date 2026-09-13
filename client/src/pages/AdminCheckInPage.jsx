@@ -7,11 +7,13 @@ import {
   verifyAdminTicket
 } from "../api/admin.js";
 import { AdminNav } from "../components/AdminNav.jsx";
+import { QrCameraScanner } from "../components/QrCameraScanner.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { formatDateTime } from "../utils/formatDate.js";
 import { formatStatusLabel } from "../utils/formatStatusLabel.js";
+import { createTicketLookupPayload } from "../utils/ticketLookup.js";
 import { getTicketStatusDetails } from "../utils/ticketStatus.js";
 
 const messageStyles = {
@@ -19,25 +21,6 @@ const messageStyles = {
   warning: "border-gold/30 bg-gold/15 text-ink",
   danger: "border-ember/20 bg-ember/10 text-ember"
 };
-
-function createLookupPayload(value) {
-  const normalizedValue = value.trim();
-
-  try {
-    const scannedUrl = new URL(normalizedValue);
-    const qrToken = scannedUrl.searchParams.get("token");
-
-    if (qrToken) {
-      return { qrToken };
-    }
-  } catch {
-    // Manual ticket codes and raw scanner tokens are not URLs.
-  }
-
-  return /^TCK-/i.test(normalizedValue)
-    ? { ticketCode: `TCK-${normalizedValue.slice(4)}` }
-    : { qrToken: normalizedValue };
-}
 
 function getEventOptionLabel(event) {
   const location = event.city ? ` - ${event.city}` : "";
@@ -152,7 +135,7 @@ export function AdminCheckInPage() {
     setMessage("");
 
     try {
-      const verifiedTicket = await verifyAdminTicket(createLookupPayload(value));
+      const verifiedTicket = await verifyAdminTicket(createTicketLookupPayload(value));
 
       if (verifyRequestIdRef.current !== requestId) {
         return;
@@ -205,6 +188,15 @@ export function AdminCheckInPage() {
     setSelectedTicketCode("");
     await verifyLookup(lookup);
   }
+
+  const handleCameraScan = useCallback(
+    async (scannedValue) => {
+      setLookup("");
+      setSelectedTicketCode("");
+      await verifyLookup(scannedValue);
+    },
+    [verifyLookup]
+  );
 
   async function handleEventChange(event) {
     const eventId = event.target.value;
@@ -478,16 +470,21 @@ export function AdminCheckInPage() {
               </div>
             ) : null}
 
+            <QrCameraScanner
+              disabled={isVerifying || isMarking}
+              onScan={handleCameraScan}
+            />
+
             <details
               className="mt-6 rounded-lg border border-ink/10 bg-white/60 p-4"
               ref={manualDetailsRef}
             >
               <summary className="cursor-pointer text-sm font-extrabold text-ink marker:text-mint">
-                Scan a QR code or enter a ticket code
+                Enter a ticket code manually
               </summary>
               <p className="mt-3 text-sm leading-6 text-ink/65">
-                A phone camera opens the QR check-in link automatically. You can
-                also paste a scanned value or type the code printed on the ticket.
+                Use this fallback when camera access is unavailable, or paste a
+                value from a separate scanner.
               </p>
               <form className="mt-4" onSubmit={handleVerify}>
                 <label className="block text-sm font-bold text-ink" htmlFor="lookup">
@@ -549,7 +546,7 @@ export function AdminCheckInPage() {
               <p className="mt-5 text-sm font-semibold text-ink/60">
                 {isVerifying
                   ? "Verifying the selected ticket..."
-                  : "Select an event and attendee ticket, or use the QR/manual option, to review check-in details."}
+                  : "Select an event and attendee ticket, scan a QR code, or enter a ticket code to review check-in details."}
               </p>
             ) : (
               <div className="mt-5 grid gap-5 md:grid-cols-[1fr_160px]">

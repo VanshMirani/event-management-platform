@@ -58,6 +58,9 @@
 - Admin check-in lists published events and their booked attendee tickets so desk
   staff can select a person without knowing the ticket code. Selecting a ticket
   verifies it and shows the attendee, booking, ticket type, and status before the
-  separate check-in action. QR URLs, raw scanner values, and manually entered
-  ticket codes remain available, and duplicate check-ins stay blocked.
+  separate check-in action. A visible camera scanner reads QR tickets directly in
+  supported HTTPS browsers, prefers the rear camera on phones, and stops the
+  camera after a result or when closed. QR URLs, external scanner values, and
+  manually entered ticket codes remain available, and duplicate check-ins stay
+  blocked.
 - Public event cards link to `/events/:slug`; event details let authenticated users create pending bookings and pay from checkout.
